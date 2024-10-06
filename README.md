@@ -198,12 +198,6 @@ The `hosts_updater.sh` script updates your system's hosts file to block ads, phi
 
 ---
 
-## **Description**
-
-This project is part of a group of three scripts designed to enable users to set up their systems across macOS, Linux, and Windows platforms. The aim is to facilitate sharing work and exploring creativity while utilizing free and open-source software whenever possible. By providing consistent setup processes and tools across different operating systems, these scripts help users maintain a unified and efficient workflow, making cross-platform collaboration and productivity seamless.
-
----
-
 ## **License**
 
 This project is licensed under the MIT License.
