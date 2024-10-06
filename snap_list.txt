@@ -1,0 +1,11 @@
+arduino
+btop
+cups
+musikcube
+ncspot
+glade
+inkscape
+vlc
+freecad
+gimp
+upscayl
