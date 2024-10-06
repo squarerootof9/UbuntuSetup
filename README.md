@@ -238,12 +238,3 @@ For questions or support, please open an issue on the repository or contact [You
 
 **Note:** Always review scripts and understand their functions before running them, especially when they modify system files or require administrative privileges.
 
----
-
-# **Cross-Platform Setup Scripts**
-
-**Description:**
-
-This project is part of a group of three scripts designed to enable users to set up their systems across macOS, Linux, and Windows platforms. The goal is to facilitate sharing work and exploring creativity while utilizing free and open-source software whenever possible. By standardizing the setup process across different operating systems, these scripts help users maintain a consistent and efficient workflow, making cross-platform collaboration and productivity seamless.
-
----
