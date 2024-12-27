@@ -207,6 +207,7 @@ install_apps() {
         udftools \
         unzip \
         wget \
+        xca \
         xfsprogs
 
     # Install applications via Homebrew

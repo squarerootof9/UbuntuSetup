@@ -6,6 +6,7 @@ ncspot
 glade
 inkscape
 vlc
+thunderbird
 freecad
 gimp
 upscayl
