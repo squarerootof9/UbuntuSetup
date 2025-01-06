@@ -237,6 +237,7 @@ install_apps() {
     sudo snap install code --classic
     sudo snap install codium --classic
     sudo snap install intellij-idea-ultimate --classic
+    sudo snap install dotnet-sdk --classic
 }
 
 # Function to install .deb packages
