@@ -181,10 +181,11 @@ install_apps() {
         build-essential \
         cmake \
         curl \
-        dmraid \
         dos2unix \
+        dotnet-sdk-9.0 \
         elinks \
         exfatprogs \
+        flatpak \
         flex \
         gpart \
         gparted \
@@ -201,7 +202,6 @@ install_apps() {
         protobuf-compiler \
         python-is-python3 \
         ragel \
-        reiser4progs \
         reiserfsprogs \
         subversion \
         udftools \
@@ -237,14 +237,14 @@ install_apps() {
     sudo snap install code --classic
     sudo snap install codium --classic
     sudo snap install intellij-idea-ultimate --classic
-    sudo snap install dotnet-sdk --classic
 }
 
 # Function to install .deb packages
 install_deb_packages() {
     DEB_URLS=(
         "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
-    )
+        "https://github.com/balena-io/etcher/releases/download/v1.19.25/balena-etcher_1.19.25_amd64.deb"
+    )    
     DOWNLOAD_DIR="$HOME/Downloads"
 
     echo "Downloading and installing .deb packages..."
