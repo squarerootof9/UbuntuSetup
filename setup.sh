@@ -187,17 +187,21 @@ install_apps() {
         exfatprogs \
         flatpak \
         flex \
+        geany \
         gpart \
         gparted \
         git \
         jfsutils \
         kpartx \
+        libpam-pkcs11 \
         libparted-dev \
         libtool-bin \
         libwebkit2gtk-4.1-dev \
         lua5.4 \
         mtools \
+        opensc \
         patch \
+        pcscd \
         pkg-config \
         protobuf-compiler \
         python-is-python3 \
