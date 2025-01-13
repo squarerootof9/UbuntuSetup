@@ -272,9 +272,9 @@ install_deb_packages() {
 # Function to install AppImages
 install_appimages() {
     APPIMAGE_URLS=(
-        "https://github.com/audacity/audacity/releases/download/Audacity-3.5.1/audacity-linux-3.5.1-x64.AppImage"
-        "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.0.0/OrcaSlicer_Linux_V2.0.0.AppImage"
-        "https://github.com/OpenShot/openshot-qt/releases/download/daily/OpenShot-v3.1.1-dev-daily-11909-a9e34a9b-8e9d7edc-x86_64.AppImage"
+        "https://github.com/audacity/audacity/releases/download/Audacity-3.7.1/audacity-linux-3.7.1-x64-22.04.AppImage"
+        "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.2.0/OrcaSlicer_Linux_Ubuntu2404_V2.2.0.AppImage"
+        "https://github.com/OpenShot/openshot-qt/releases/download/v3.3.0/OpenShot-v3.3.0-x86_64.AppImage"
     )
     APP_NAMES=(
         "Audacity"
