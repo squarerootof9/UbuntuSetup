@@ -200,6 +200,7 @@ install_apps() {
         lua5.4 \
         mtools \
         opensc \
+        openssh-server \
         patch \
         pcscd \
         pkg-config \
@@ -248,6 +249,7 @@ install_deb_packages() {
     DEB_URLS=(
         "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
         "https://github.com/balena-io/etcher/releases/download/v1.19.25/balena-etcher_1.19.25_amd64.deb"
+        "https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
     )    
     DOWNLOAD_DIR="$HOME/Downloads"
 
