@@ -351,6 +351,54 @@ full_setup() {
     fi
 }
 
+# Function to install and start ssh-server
+
+setup_ssh() {
+  echo "Installing and configuring SSH Server..."
+  echo ""
+
+  # Update and install OpenSSH server
+  sudo apt update
+  sudo apt install -y openssh-server
+
+  # Enable and start SSH
+  sudo systemctl enable ssh
+  sudo systemctl start ssh
+
+  # Configure firewall
+  sudo ufw allow ssh
+  sudo ufw reload
+
+  # Check SSH status
+  sudo systemctl status ssh --no-pager
+
+  echo ""
+  echo "SSH Server installed and started."
+  echo ""
+
+  # Provide a brief message about further SSH config
+  # Gather hostname and local IP info for user reference
+  local hostnameInfo
+  local ipAddress
+
+  hostnameInfo=$(hostname)
+  # Attempt to fetch first detected IP (may need adjustment in multi-NIC systems)
+  ipAddress=$(hostname -I | awk '{print $1}')
+
+  echo "Further configuration:"
+  echo " - To edit SSH settings, run: sudo nano /etc/ssh/sshd_config"
+  echo " - Then restart SSH with:   sudo systemctl restart ssh"
+  echo ""
+  echo "You can connect to this machine via SSH using one of these methods:"
+  echo "    ssh <username>@${ipAddress}"
+  echo "    ssh <username>@${hostnameInfo}"
+  echo ""
+
+  read -rp "Press Enter to return to the main menu..."
+  
+  show_menu
+}
+
 # Menu system
 show_menu() {
     echo "--------------------------------------------"
@@ -360,9 +408,10 @@ show_menu() {
     echo "2) Add/Remove Java"
     echo "3) Add Kubuntu Desktop"
     echo "4) Remove Kubuntu Desktop"
-    echo "5) Exit"
+    echo "5) Set Up SSH Server"
+    echo "6) Exit"
     echo "--------------------------------------------"
-    read -rp "Please select an option [1-5]: " choice
+    read -rp "Please select an option [1-6]: " choice
     case $choice in
         1)
             full_setup
@@ -399,6 +448,10 @@ show_menu() {
             remove_kde
             ;;
         5)
+            # Set Up SSH
+            setup_ssh
+            ;;
+        6)
             echo "Exiting."
             exit 0
             ;;
