@@ -10,3 +10,5 @@ thunderbird
 freecad
 gimp
 upscayl
+ykman
+skype

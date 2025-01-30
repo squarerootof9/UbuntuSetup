@@ -185,6 +185,7 @@ install_apps() {
         dotnet-sdk-9.0 \
         elinks \
         exfatprogs \
+        fido2-tools \
         flatpak \
         flex \
         geany \
@@ -213,7 +214,8 @@ install_apps() {
         unzip \
         wget \
         xca \
-        xfsprogs
+        xfsprogs \
+        yubico-piv-tool
 
     # Install applications via Homebrew
     brew install cocoapods
