@@ -200,6 +200,7 @@ install_apps() {
         libwebkit2gtk-4.1-dev \
         lua5.4 \
         mtools \
+        nvm \
         opensc \
         openssh-server \
         patch \
@@ -221,6 +222,7 @@ install_apps() {
     brew install cocoapods
     brew install arduino-cli
     brew install esptool
+    brew install node@23
 
     # Set up CocoaPods
     echo "Setting up CocoaPods..."
