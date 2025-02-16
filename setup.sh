@@ -201,6 +201,7 @@ install_apps() {
         lua5.4 \
         mtools \
         nvm \
+        obs-studio \
         opensc \
         openssh-server \
         patch \
