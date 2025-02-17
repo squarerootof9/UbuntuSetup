@@ -56,8 +56,8 @@ This project aims to simplify the initial setup of an Ubuntu system by automatin
 1. **Clone the Repository:**
 
    ```bash
-   git clone https://github.com/yourusername/yourrepository.git
-   cd yourrepository
+   git clone https://github.com/squarerootof9/UbuntuSetup
+   cd UbuntuSetup
    ```
 
 2. **Make the Script Executable:**
