@@ -200,6 +200,7 @@ install_apps() {
         libwebkit2gtk-4.1-dev \
         lua5.4 \
         mtools \
+        mpv \
         nvm \
         obs-studio \
         opensc \
@@ -214,6 +215,7 @@ install_apps() {
         subversion \
         udftools \
         unzip \
+        v4l-utils \
         wget \
         xca \
         xfsprogs \
