@@ -212,6 +212,7 @@ install_apps() {
         python-is-python3 \
         ragel \
         reiserfsprogs \
+        rpi-imager \
         subversion \
         udftools \
         unzip \
