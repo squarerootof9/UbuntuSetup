@@ -11,4 +11,3 @@ freecad
 gimp
 upscayl
 ykman
-skype
