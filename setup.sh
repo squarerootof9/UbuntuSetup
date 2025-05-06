@@ -9,6 +9,7 @@
 # This script is licensed under the MIT License.
 # See the LICENSE file in the project root for license information.
 
+#💥 There it is, Captain — the holy trinity of Bash discipline
 set -euo pipefail
 
 # Log output to a file
@@ -31,6 +32,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOMEBREW_INSTALLED=false
 JAVA_INSTALLED=false
 
+pause() {
+    read -n1 -rsp $'Press any key to continue...\n'
+}
+
 if command -v brew &>/dev/null; then
     HOMEBREW_INSTALLED=true
 fi
@@ -47,14 +52,14 @@ fi
 install_homebrew() {
     if ! $HOMEBREW_INSTALLED; then
         echo "Installing Homebrew..."
-
+        
         # Install dependencies
         sudo apt update
         sudo apt install -y build-essential curl file git
-
+        
         # Run the Homebrew installation script
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
+        
         # Add Homebrew to the PATH in .bashrc
         if ! grep -qxF '# Homebrew configuration' "$HOME/.bashrc"; then
             {
@@ -62,7 +67,7 @@ install_homebrew() {
                 echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"'
             } >> "$HOME/.bashrc"
         fi
-
+        
         # Evaluate Homebrew environment for the current script
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
         HOMEBREW_INSTALLED=true
@@ -71,7 +76,7 @@ install_homebrew() {
         # Ensure brew shellenv is evaluated
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     fi
-
+    
     # Update and upgrade Homebrew
     brew update && brew upgrade && brew cleanup
 }
@@ -81,13 +86,13 @@ install_java() {
     if ! $JAVA_INSTALLED; then
         echo "Installing Java..."
         brew install openjdk
-
+        
         # Find the Java home directory
         JAVA_HOME_DIR=$(brew --prefix openjdk)/libexec/openjdk.jdk
         if [ ! -d "$JAVA_HOME_DIR" ]; then
             JAVA_HOME_DIR=$(brew --prefix openjdk)
         fi
-
+        
         # Add JAVA_HOME to .bashrc with precise comments
         if ! grep -qxF '# Java configuration' "$HOME/.bashrc"; then
             {
@@ -97,7 +102,7 @@ install_java() {
                 echo 'export PATH=$JAVA_HOME/bin:$PATH'
             } >> "$HOME/.bashrc"
         fi
-
+        
         # Source the updated .bashrc
         source "$HOME/.bashrc"
         JAVA_INSTALLED=true
@@ -112,7 +117,7 @@ install_java() {
 remove_java() {
     if $JAVA_INSTALLED; then
         echo "Removing Java..."
-
+        
         # Find the installed Java package
         JAVA_PACKAGE=$(brew list --formula | grep -E '^openjdk(@[0-9]+)?$' || true)
         if [ -n "$JAVA_PACKAGE" ]; then
@@ -120,10 +125,10 @@ remove_java() {
         else
             echo "Java package not found in Homebrew. Skipping brew uninstall."
         fi
-
+        
         # Remove Java configuration from .bashrc
         sed -i.bak '/# Java configuration/,/^$/d' "$HOME/.bashrc"
-
+        
         # Source the updated .bashrc
         source "$HOME/.bashrc"
         JAVA_INSTALLED=false
@@ -134,6 +139,55 @@ remove_java() {
     fi
 }
 
+################################################################################
+######                          Node.JS
+################################################################################
+
+install_nodejs(){
+    
+    local options="${1:-}"
+    
+    #🌐 Networking & Downloads
+    sudo apt install -y --no-install-recommends curl
+    
+    ##########
+    # Node.js
+    ##########
+    #https://www.jemrf.com/pages/how-to-install-nvm-and-node-js-on-raspberry-pi
+    echo "Installing Node.js..."
+    curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+    command -v nvm
+    nvm install stable
+    npm install -g npm@11.2.0
+    node -v
+    
+    # Reinstall TileServer GL from source
+    # git clone https://github.com/maptiler/tileserver-gl.git
+    # cd tileserver-gl/
+    # nvm install 18
+    # nvm use 18
+    
+    # echo "18" > .nvmrc
+    # nvm use
+    
+    # npm install
+    
+    #npm install -g --build-from-source tileserver-gl
+    #sudo ln -s /usr/lib/aarch64-linux-gnu/libjpeg.so.62 /usr/lib/aarch64-linux-gnu/libjpeg.so.8
+    #sudo apt install -y libvips libvips-dev build-essential
+    
+    #sudo apt install -y --no-install-recommends nodejs
+    echo "Installation of Node.js complete..."
+    
+    # Skip pause if "-s" is passed
+    if [ "$options" != "-s" ]; then
+        pause
+    fi
+    
+}
+
 # Function to install Kubuntu desktop
 install_kde() {
     echo "Installing Kubuntu desktop environment..."
@@ -141,6 +195,7 @@ install_kde() {
     sudo apt install -y kubuntu-desktop
     echo "Kubuntu desktop has been installed."
     reboot_system
+    pause
 }
 
 # Function to remove Kubuntu desktop
@@ -150,6 +205,7 @@ remove_kde() {
     sudo apt autoremove -y
     echo "Kubuntu desktop has been removed."
     reboot_system
+    pause
 }
 
 # Function to reboot system
@@ -165,73 +221,72 @@ reboot_system() {
 # Function to install applications
 install_apps() {
     echo "Installing applications..."
-
+    
     # Update and upgrade apt packages
     sudo apt update
     sudo apt upgrade -y
-
+    
     # Install necessary packages via apt
     sudo apt install -y \
-        adb \
-        automake \
-        ant \
-        autopoint \
-        binwalk \
-        bison \
-        build-essential \
-        cmake \
-        curl \
-        dos2unix \
-        dotnet-sdk-9.0 \
-        elinks \
-        exfatprogs \
-        fido2-tools \
-        flatpak \
-        flex \
-        geany \
-        gpart \
-        gparted \
-        git \
-        jfsutils \
-        kpartx \
-        libpam-pkcs11 \
-        libparted-dev \
-        libtool-bin \
-        libwebkit2gtk-4.1-dev \
-        lua5.4 \
-        mtools \
-        mpv \
-        nvm \
-        obs-studio \
-        opensc \
-        openssh-server \
-        patch \
-        pcscd \
-        pkg-config \
-        protobuf-compiler \
-        python-is-python3 \
-        ragel \
-        reiserfsprogs \
-        rpi-imager \
-        subversion \
-        udftools \
-        unzip \
-        v4l-utils \
-        wget \
-        xca \
-        xfsprogs \
-        yubico-piv-tool
-
+    adb \
+    automake \
+    ant \
+    autopoint \
+    binwalk \
+    bison \
+    build-essential \
+    cmake \
+    curl \
+    dos2unix \
+    dotnet-sdk-9.0 \
+    elinks \
+    exfatprogs \
+    fido2-tools \
+    flatpak \
+    flex \
+    geany \
+    gpart \
+    gparted \
+    git \
+    jfsutils \
+    kpartx \
+    libpam-pkcs11 \
+    libparted-dev \
+    libtool-bin \
+    libwebkit2gtk-4.1-dev \
+    lua5.4 \
+    mtools \
+    mpv \
+    obs-studio \
+    opensc \
+    openssh-server \
+    patch \
+    pcscd \
+    pkg-config \
+    protobuf-compiler \
+    python-is-python3 \
+    ragel \
+    reiserfsprogs \
+    rpi-imager \
+    subversion \
+    udftools \
+    unzip \
+    v4l-utils \
+    wget \
+    xca \
+    xfsprogs \
+    yubico-piv-tool
+    
     # Install applications via Homebrew
     brew install cocoapods
     brew install arduino-cli
     brew install esptool
-    brew install node@23
-
+    #brew install node@23
+    
     # Set up CocoaPods
     echo "Setting up CocoaPods..."
     pod setup
-
+    
     # Install snap packages from snap_list.txt
     echo "Installing snap packages..."
     if [ -f "$SCRIPT_DIR/snap_list.txt" ]; then
@@ -242,7 +297,7 @@ install_apps() {
     else
         echo "snap_list.txt not found in $SCRIPT_DIR."
     fi
-
+    
     # Install snaps with classic confinement
     echo "Installing snap packages with classic confinement..."
     sudo snap install android-studio --classic
@@ -258,11 +313,11 @@ install_deb_packages() {
         "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
         "https://github.com/balena-io/etcher/releases/download/v1.19.25/balena-etcher_1.19.25_amd64.deb"
         "https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
-    )    
+    )
     DOWNLOAD_DIR="$HOME/Downloads"
-
+    
     echo "Downloading and installing .deb packages..."
-
+    
     for url in "${DEB_URLS[@]}"; do
         filename=$(basename "$url")
         filepath="$DOWNLOAD_DIR/$filename"
@@ -275,7 +330,7 @@ install_deb_packages() {
         echo "Installing $filename..."
         sudo dpkg -i "$filepath" || sudo apt install -f -y
     done
-
+    
     echo ".deb packages installation complete."
 }
 
@@ -293,21 +348,21 @@ install_appimages() {
     )
     DOWNLOAD_DIR="$HOME/Downloads"
     APPIMAGE_DIR="$HOME/AppImages"
-
+    
     echo "Downloading AppImage packages..."
-
+    
     # Create APPIMAGE_DIR if it doesn't exist
     if [ ! -d "$APPIMAGE_DIR" ]; then
         mkdir -p "$APPIMAGE_DIR"
     fi
-
+    
     for index in "${!APPIMAGE_URLS[@]}"; do
         url="${APPIMAGE_URLS[$index]}"
         app_name="${APP_NAMES[$index]}"
         filename=$(basename "$url")
         filepath="$DOWNLOAD_DIR/$filename"
         target_path="$APPIMAGE_DIR/$filename"
-
+        
         # Check if the AppImage already exists at the final location
         if [ -f "$target_path" ]; then
             echo "$filename already exists in $APPIMAGE_DIR. Skipping download."
@@ -318,7 +373,7 @@ install_appimages() {
             mv "$filepath" "$target_path"
             echo "Moved $filename to $APPIMAGE_DIR."
         fi
-
+        
         # Create .desktop file
         desktop_file="$HOME/.local/share/applications/${filename%.AppImage}.desktop"
         if [ ! -f "$desktop_file" ]; then
@@ -338,18 +393,20 @@ EOL
             echo "Desktop entry for $app_name already exists. Skipping."
         fi
     done
-
+    
     echo "AppImage packages installation complete."
 }
 
 # Function for full setup
 full_setup() {
+
     install_homebrew
     install_java
+    install_nodejs
     install_apps
     install_deb_packages
     install_appimages
-
+    
     # Prompt for Kubuntu desktop installation
     read -p "Do you want to install the Kubuntu desktop environment? (y/N): " INSTALL_KDE
     if [[ "$INSTALL_KDE" =~ ^[Yy]$ ]]; then
@@ -357,73 +414,81 @@ full_setup() {
     else
         echo "Skipping Kubuntu desktop installation."
     fi
+    
+    echo ""
+    echo "Full Setup Finished"
+    echo ""
+    
+    pause
 }
 
 # Function to install and start ssh-server
 
 setup_ssh() {
-  echo "Installing and configuring SSH Server..."
-  echo ""
-
-  # Update and install OpenSSH server
-  sudo apt update
-  sudo apt install -y openssh-server
-
-  # Enable and start SSH
-  sudo systemctl enable ssh
-  sudo systemctl start ssh
-
-  # Configure firewall
-  sudo ufw allow ssh
-  sudo ufw reload
-
-  # Check SSH status
-  sudo systemctl status ssh --no-pager
-
-  echo ""
-  echo "SSH Server installed and started."
-  echo ""
-
-  # Provide a brief message about further SSH config
-  # Gather hostname and local IP info for user reference
-  local hostnameInfo
-  local ipAddress
-
-  hostnameInfo=$(hostname)
-  # Attempt to fetch first detected IP (may need adjustment in multi-NIC systems)
-  ipAddress=$(hostname -I | awk '{print $1}')
-
-  echo "Further configuration:"
-  echo " - To edit SSH settings, run: sudo nano /etc/ssh/sshd_config"
-  echo " - Then restart SSH with:   sudo systemctl restart ssh"
-  echo ""
-  echo "You can connect to this machine via SSH using one of these methods:"
-  echo "    ssh <username>@${ipAddress}"
-  echo "    ssh <username>@${hostnameInfo}"
-  echo ""
-
-  read -rp "Press Enter to return to the main menu..."
-  
-  show_menu
+    echo "Installing and configuring SSH Server..."
+    echo ""
+    
+    # Update and install OpenSSH server
+    sudo apt update
+    sudo apt install -y openssh-server
+    
+    # Enable and start SSH
+    sudo systemctl enable ssh
+    sudo systemctl start ssh
+    
+    # Configure firewall
+    sudo ufw allow ssh
+    sudo ufw reload
+    
+    # Check SSH status
+    sudo systemctl status ssh --no-pager
+    
+    echo ""
+    echo "SSH Server installed and started."
+    echo ""
+    
+    # Provide a brief message about further SSH config
+    # Gather hostname and local IP info for user reference
+    local hostnameInfo
+    local ipAddress
+    
+    hostnameInfo=$(hostname)
+    # Attempt to fetch first detected IP (may need adjustment in multi-NIC systems)
+    ipAddress=$(hostname -I | awk '{print $1}')
+    
+    echo "Further configuration:"
+    echo " - To edit SSH settings, run: sudo nano /etc/ssh/sshd_config"
+    echo " - Then restart SSH with:   sudo systemctl restart ssh"
+    echo ""
+    echo "You can connect to this machine via SSH using one of these methods:"
+    echo "    ssh <username>@${ipAddress}"
+    echo "    ssh <username>@${hostnameInfo}"
+    echo ""
+    
+    pause
+    
+    show_menu
 }
 
 # Menu system
 show_menu() {
+    clear
     echo "--------------------------------------------"
     echo "Setup Script Menu"
     echo "--------------------------------------------"
     echo "1) Full setup (Homebrew, Java, Apps)"
     echo "2) Add/Remove Java"
-    echo "3) Add Kubuntu Desktop"
-    echo "4) Remove Kubuntu Desktop"
-    echo "5) Set Up SSH Server"
-    echo "6) Exit"
+    echo "3) Add Node.js®"
+    echo "4) Add Kubuntu Desktop"
+    echo "5) Remove Kubuntu Desktop"
+    echo "6) Set Up SSH Server"
+    echo "7) Exit"
     echo "--------------------------------------------"
-    read -rp "Please select an option [1-6]: " choice
+    read -rp "Please select an option [1-7]: " choice
     case $choice in
         1)
             full_setup
-            ;;
+        ;;
         2)
             echo "--------------------------------------------"
             echo "Java Management"
@@ -446,27 +511,30 @@ show_menu() {
                     echo "Java will not be installed."
                 fi
             fi
-            ;;
+        ;;
         3)
+            install_nodejs
+        ;;
+        4)
             # Add Kubuntu Desktop
             install_kde
-            ;;
-        4)
+        ;;
+        5)
             # Remove Kubuntu Desktop
             remove_kde
-            ;;
-        5)
+        ;;
+        6)
             # Set Up SSH
             setup_ssh
-            ;;
-        6)
+        ;;
+        7)
             echo "Exiting."
             exit 0
-            ;;
+        ;;
         *)
             echo "Invalid option. Please try again."
             show_menu
-            ;;
+        ;;
     esac
 }
 
