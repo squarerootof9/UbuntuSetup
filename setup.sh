@@ -22,8 +22,8 @@ if [[ $EUID -eq 0 ]]; then
     exit 1
 fi
 
-echo "This script will require administrative privileges. You may be prompted for your password."
-sudo -v
+#echo "This script will require administrative privileges. You may be prompted for your password."
+#sudo -v
 
 # Get the directory of the script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -47,6 +47,67 @@ if command -v java &>/dev/null; then
         JAVA_INSTALLED=true
     fi
 fi
+
+
+install_development()
+{
+    
+    echo ""
+    echo "📦 Installing Build Essentials"
+    echo ""
+    
+    #libtool-bin # Different from libtool
+    
+    sudo apt install --no-install-recommends \
+    cmake ninja-build automake autoconf autopoint libtool g++ pkg-config swig \
+    doxygen dpkg-dev graphviz libltdl-dev libc6-dev libcurl4-openssl-dev gettext intltool \
+    python3-setuptools python3-pip python3-wheel \
+    subversion git curl ccache
+    
+    echo ""
+    echo "✅ Build Essentials Installed"
+    echo ""
+    
+    #pause
+    
+}
+
+##REMOVE
+
+# Function for full setup
+full_setup() {
+    
+    # Prompt for Homebrew installation
+    #read -p "Do you want to install the Homebrew environment? (y/N): " INSTALL_HB
+    #if [[ "$INSTALL_HB" =~ ^[Yy]$ ]]; then
+    #install_homebrew
+    #else
+    #echo "Skipping Homebrew installation."
+    #fi
+    
+    #install_homebrew_java
+    install_development
+    
+    install_nodejs
+    
+    # Prompt for Kubuntu desktop installation
+    read -p "Do you want to install the Plasma desktop environment? (y/N): " INSTALL_PLASMA
+    if [[ "$INSTALL_PLASMA" =~ ^[Yy]$ ]]; then
+        install_kde_plasma_desktop
+    else
+        echo "Skipping Plasma desktop installation."
+    fi
+    
+    install_apt_apps
+    install_deb_packages
+    install_appimages
+    
+    echo ""
+    echo "Full Setup Finished"
+    echo ""
+    
+    #pause
+}
 
 # Function to install Homebrew
 install_homebrew() {
@@ -77,44 +138,73 @@ install_homebrew() {
         eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     fi
     
+    #FIX
+    #brew uninstall --ignore-dependencies python
+    
     # Update and upgrade Homebrew
     brew update && brew upgrade && brew cleanup
+    
+    # Install applications via Homebrew
+    brew install cocoapods
+    brew install arduino-cli
+    brew install esptool
+    #brew install node@23
+    
+    # Set up CocoaPods
+    echo "Setting up CocoaPods..."
+    pod setup
+    
+    #pause
 }
 
 # Function to install Java
-install_java() {
+install_homebrew_java() {
     if ! $JAVA_INSTALLED; then
         echo "Installing Java..."
-        brew install openjdk
         
-        # Find the Java home directory
-        JAVA_HOME_DIR=$(brew --prefix openjdk)/libexec/openjdk.jdk
-        if [ ! -d "$JAVA_HOME_DIR" ]; then
-            JAVA_HOME_DIR=$(brew --prefix openjdk)
+        if $HOMEBREW_INSTALLED; then
+            
+            brew install openjdk
+            
+            # Find the Java home directory
+            JAVA_HOME_DIR=$(brew --prefix openjdk)/libexec/openjdk.jdk
+            if [ ! -d "$JAVA_HOME_DIR" ]; then
+                JAVA_HOME_DIR=$(brew --prefix openjdk)
+            fi
+            
+            # Add JAVA_HOME to .bashrc with precise comments
+            if ! grep -qxF '# Java configuration' "$HOME/.bashrc"; then
+                {
+                    echo '# Java configuration'
+                    echo 'export LC_ALL=en_US.UTF-8'
+                    echo "export JAVA_HOME=$JAVA_HOME_DIR"
+                    echo 'export PATH=$JAVA_HOME/bin:$PATH'
+                } >> "$HOME/.bashrc"
+            fi
+            
+            # Source the updated .bashrc
+            source "$HOME/.bashrc"
+            JAVA_INSTALLED=true
+            echo "Java has been installed and configured."
+            echo "Please restart your terminal for the changes to take effect."
+            
+        else
+            
+            echo "Java install requires Homebrew"
         fi
         
-        # Add JAVA_HOME to .bashrc with precise comments
-        if ! grep -qxF '# Java configuration' "$HOME/.bashrc"; then
-            {
-                echo '# Java configuration'
-                echo 'export LC_ALL=en_US.UTF-8'
-                echo "export JAVA_HOME=$JAVA_HOME_DIR"
-                echo 'export PATH=$JAVA_HOME/bin:$PATH'
-            } >> "$HOME/.bashrc"
-        fi
-        
-        # Source the updated .bashrc
-        source "$HOME/.bashrc"
-        JAVA_INSTALLED=true
-        echo "Java has been installed and configured."
-        echo "Please restart your terminal for the changes to take effect."
     else
         echo "Java is already installed."
     fi
+    
+    #pause
 }
 
 # Function to remove Java
 remove_java() {
+    
+    sudo apt purge -y openjdk*
+    
     if $JAVA_INSTALLED; then
         echo "Removing Java..."
         
@@ -137,7 +227,88 @@ remove_java() {
     else
         echo "Java is not installed."
     fi
+    
+    #pause
 }
+
+##REMOVE
+manage_java_old() {
+    echo "--------------------------------------------"
+    echo "Java Management"
+    echo "--------------------------------------------"
+    
+    if $JAVA_INSTALLED; then
+        echo "Java is currently installed."
+        read -p "Do you want to remove Java? (y/N): " REMOVE_JAVA
+        if [[ "$REMOVE_JAVA" =~ ^[Yy]$ ]]; then
+            remove_java
+        else
+            echo "Java will not be removed."
+        fi
+    else
+        echo "Java is not installed."
+        read -p "Do you want to install Java? (y/N): " INSTALL_JAVA
+        if [[ "$INSTALL_JAVA" =~ ^[Yy]$ ]]; then
+            install_homebrew
+            install_homebrew_java
+        else
+            echo "Java will not be installed."
+        fi
+    fi
+}
+
+manage_java() {
+    
+    clear
+    echo "--------------------------------------------"
+    echo "Java Management"
+    echo "--------------------------------------------"
+    echo "Select the Java version to install:"
+    echo "1) default-jre"
+    echo "2) openjdk-8-jre-headless"
+    echo "3) openjdk-11-jre-headless"
+    echo "4) openjdk-17-jre-headless"
+    echo "5) openjdk-21-jre-headless"
+    echo "6) openjdk-22-jre-headless"
+    echo "7) openjdk-23-jre-headless"
+    echo "8) openjdk-24-jre-headless"
+    #echo "9) Homebrew Java (openjdk)"
+    echo "r) Remove Java"
+    echo "q) Quit"
+    echo
+    
+    read -p "Enter your choice: " java_choice
+    
+    case "$java_choice" in
+        1)  sudo apt install -y default-jre ;;
+        2)  sudo apt install -y openjdk-8-jre-headless ;;
+        3)  sudo apt install -y openjdk-11-jre-headless ;;
+        4)  sudo apt install -y openjdk-17-jre-headless ;;
+        5)  sudo apt install -y openjdk-21-jre-headless ;;
+        6)  sudo apt install -y openjdk-22-jre-headless ;;
+        7)  sudo apt install -y openjdk-23-jre-headless ;;
+        8)  sudo apt install -y openjdk-24-jre-headless ;;
+        9)
+            echo "Installing Java via Homebrew."
+            install_homebrew
+            install_homebrew_java
+        ;;
+        r|R)
+            remove_java
+        ;;
+        q|Q)
+            echo "Aborted Java management."
+            #main_menu
+        ;;
+        *)
+            echo "Invalid choice. No action taken."
+        ;;
+    esac
+    
+    pause
+    main_menu
+}
+
 
 ################################################################################
 ######                          Node.JS
@@ -182,35 +353,161 @@ install_nodejs(){
     echo "Installation of Node.js complete..."
     
     # Skip pause if "-s" is passed
-    if [ "$options" != "-s" ]; then
-        pause
-    fi
+    #if [ "$options" != "-s" ]; then
+        #pause
+    #fi
+    
+}
+
+install_kde_plasma_desktop(){
+    
+    # Prompt for Kubuntu desktop installation
+    #read -p "Do you want to install the Plasma desktop environment? (y/N): " INSTALL_PLASMA
+    #if [[ "$INSTALL_PLASMA" =~ ^[Yy]$ ]]; then
+        
+        echo "Installing KDE Plasma desktop..."
+        
+        #https://packages.debian.org/bookworm/kde/
+        
+        base_desktop=(
+            # Core Plasma shell and settings
+            kde-plasma-desktop
+            systemsettings
+            powerdevil
+            kscreen
+            #
+            kinfocenter
+            aha  clinfo  edid-decode  libdisplay-info-bin  libpulsedsp  mesa-utils  mesa-utils-bin  pulseaudio-utils  vulkan-tools  wayland-utils
+            #
+            kwin-x11
+            kdeconnect
+            qml6-module-org-kde-kdeconnect
+            kde-config-screenlocker
+            kde-config-gtk-style
+            qt5-gtk-platformtheme
+            kde-config-plymouth
+            kde-config-sddm
+            kde-config-tablet
+            kde-config-updates
+            kde-config-cron
+            kde-config-cddb
+            kde-config-flatpak
+            kde-config-gtk-style-preview
+            xdg-desktop-portal-kde
+            
+            # Plasma Discover (app store + backends)
+            plasma-discover
+            plasma-discover-backend-flatpak
+            plasma-discover-backend-snap
+            plasma-discover-backend-fwupd
+            
+            # System tray and desktop extensions
+            plasma-pa                # Audio control
+            plasma-nm                # Network control
+            plasma-systemmonitor     # New system monitor UI
+            plasma-thunderbolt       # Thunderbolt settings
+            plasma-firewall          # Firewall GUI
+            plasma-vault             # Encrypted vaults
+            
+            # Update and release notifications
+            plasma-discover-notifier
+            plasma-distro-release-notifier
+            
+            # Browser integration and welcome
+            plasma-browser-integration
+            #plasma-welcome
+            
+            # Widgets, calendar, engine add-ons
+            plasma-calendar-addons
+            plasma-dataengines-addons
+            plasma-widgets-addons
+            
+            # Appearance (themes, visuals)
+            plasma-theme-oxygen
+            plasma-workspace-wallpapers
+            plasma-wallpapers-addons
+            kdegraphics-thumbnailers
+            ffmpegthumbs
+            kio-extras
+            plymouth-theme-breeze
+            plymouth-theme-kubuntu-logo
+            plymouth-theme-kubuntu-text
+        )
+        
+        essential_kde_utilities=(
+            kmenuedit
+            ksshaskpass
+            kwalletmanager
+            ksystemlog
+            khelpcenter
+            kdf
+            partitionmanager
+            plasma-browser-integration
+            plasma-discover-notifier
+            plasma-disks
+            kcalc
+            kcharselect
+            kamera
+            bluedevil
+            print-manager
+        )
+        
+        #sddm
+        #sddm-theme
+        #qt6-virtualkeyboard-plugin
+        
+        all_packages=(
+            "${base_desktop[@]}"
+            "${essential_kde_utilities[@]}"
+        )
+        
+        install_apps "${all_packages[@]}"
+        
+    #else
+    #    echo "Skipping Plasma desktop installation."
+    #fi
+    
+    #pause
     
 }
 
 # Function to install Kubuntu desktop
-install_kde() {
-    echo "Installing Kubuntu desktop environment..."
-    sudo apt update
-    sudo apt install -y kubuntu-desktop
-    echo "Kubuntu desktop has been installed."
-    reboot_system
-    pause
+install_kde_desktop() {
+    # Prompt for Kubuntu desktop installation
+    read -p "Do you want to install the Full KDE desktop environment? (y/N): " INSTALL_KDE
+    if [[ "$INSTALL_KDE" =~ ^[Yy]$ ]]; then
+        
+        echo "Installing Kubuntu desktop environment..."
+        sudo apt update
+        sudo apt install kubuntu-desktop
+        echo "Kubuntu desktop has been installed."
+        reboot_system
+    else
+        echo "Skipping Kubuntu desktop installation."
+    fi
+    
+    #pause
 }
 
 # Function to remove Kubuntu desktop
-remove_kde() {
-    echo "Removing Kubuntu desktop environment..."
-    sudo apt purge -y kubuntu-desktop
-    sudo apt autoremove -y
-    echo "Kubuntu desktop has been removed."
-    reboot_system
-    pause
+remove_kde_desktop() {
+    read -p "Do you want to remove the Full KDE desktop environment? (y/N): " REMOVE_KDE
+    if [[ "$REMOVE_KDE" =~ ^[Yy]$ ]]; then
+        echo "Removing Kubuntu desktop environment..."
+        sudo apt purge -y kubuntu-desktop
+        sudo apt autoremove -y
+        echo "Kubuntu desktop has been removed."
+        reboot_system
+    else
+        echo "Skipping Kubuntu desktop installation."
+    fi
+    
+    #pause
 }
 
 # Function to reboot system
 reboot_system() {
-    read -p "The system needs to reboot to complete the installation/removal of Kubuntu desktop. Reboot now? (y/N): " REBOOT
+    read -p "The system will need to reboot to complete the installation/removal of Kubuntu desktop. Reboot now? (y/N): " REBOOT
     if [[ "$REBOOT" =~ ^[Yy]$ ]]; then
         sudo reboot
     else
@@ -218,74 +515,136 @@ reboot_system() {
     fi
 }
 
-# Function to install applications
+# Helper function for updating and upgrading the system
+update_upgrade() {
+    #do-release-upgrade
+    echo "🧩 Updating APT package lists..."
+    sudo apt update
+    
+    echo "📦 Upgrading installed APT packages..."
+    sudo apt upgrade -y
+    
+    echo "🔁 Performing full APT distribution upgrade..."
+    sudo apt full-upgrade -y
+    
+    echo "🧹 Autoremoving orphaned packages..."
+    sudo apt autoremove -y
+    
+    echo "🧽 Cleaning APT package cache..."
+    sudo apt clean
+    
+    if command -v snap &> /dev/null; then
+        echo "📦 Updating Snap packages..."
+        sudo snap refresh
+    fi
+    
+    if command -v flatpak &> /dev/null; then
+        echo "📦 Updating Flatpak packages..."
+        flatpak update -y
+    fi
+    
+    echo ""
+    echo "✅ System update complete."
+    echo ""
+    #pause
+}
+
 install_apps() {
+    local packages=("$@")
+    echo "Installing: ${packages[*]}"
+    sudo apt install --no-install-recommends "${packages[@]}"
+}
+
+install_applications_all(){
+    
+    install_apt_apps -s
+    install_snap_apps -s
+    install_deb_packages -s
+    install_appimages -s
+    
+    echo ""
+    echo "✅ Full Setup Finished"
+    echo ""
+    
+    #pause
+}
+# Function to install applications
+install_apt_apps() {
+    
+    local options="${1:-}"
+    
     echo "Installing applications..."
     
     # Update and upgrade apt packages
-    sudo apt update
-    sudo apt upgrade -y
+    # update_upgrade
     
-    # Install necessary packages via apt
-    sudo apt install -y \
-    adb \
-    automake \
-    ant \
-    autopoint \
-    binwalk \
-    bison \
-    build-essential \
-    cmake \
-    curl \
-    dos2unix \
-    dotnet-sdk-9.0 \
-    elinks \
-    exfatprogs \
-    fido2-tools \
-    flatpak \
-    flex \
-    geany \
-    gpart \
-    gparted \
-    git \
-    jfsutils \
-    kpartx \
-    libpam-pkcs11 \
-    libparted-dev \
-    libtool-bin \
-    libwebkit2gtk-4.1-dev \
-    lua5.4 \
-    mtools \
-    mpv \
-    obs-studio \
-    opensc \
-    openssh-server \
-    patch \
-    pcscd \
-    pkg-config \
-    protobuf-compiler \
-    python-is-python3 \
-    ragel \
-    reiserfsprogs \
-    rpi-imager \
-    subversion \
-    udftools \
-    unzip \
-    v4l-utils \
-    wget \
-    xca \
-    xfsprogs \
-    yubico-piv-tool
     
-    # Install applications via Homebrew
-    brew install cocoapods
-    brew install arduino-cli
-    brew install esptool
-    #brew install node@23
+    ### 🧰 Development Tools
+    dev_tools=(
+        flex
+        bison
+        patch
+        #ant
+        python-is-python3
+        protobuf-compiler
+        ragel
+        lua5.4
+    )
+    ### 🐧 System Utilities
+    system_utils=(
+        unzip dos2unix flatpak fwupd geany gparted gpart
+        htop rpi-imager mtools kpartx subversion
+    )
+    ### 💾 File System & Disk Tools
+    fs_disk_tools=(
+        exfatprogs jfsutils reiserfsprogs xfsprogs udftools libparted-dev
+    )
+    ### 🔐 Security & Auth
+    security_tools=(
+        opensc pcscd fido2-tools yubico-piv-tool libpam-pkcs11 xca
+    )
+    ### 🖥️ Multimedia / GUI / OBS
+    gui_apps=(
+        #libwebkit2gtk-4.1-dev \
+        mpv obs-studio
+    )
+    ### 📱 Mobile / Flash / Embedded
+    embedded_tools=(
+        adb binwalk
+    )
+    ### 🌍 Web & Remote Tools
+    remote_tools=(
+        curl wget elinks
+    )
+    ### 🛠 Miscellaneous / Special Purpose
+    misc_tools=(
+        rpi-imager python-is-python3
+        #dotnet-sdk-9.0
+    )
     
-    # Set up CocoaPods
-    echo "Setting up CocoaPods..."
-    pod setup
+    all_packages=(
+        "${dev_tools[@]}"
+        "${system_utils[@]}"
+        "${fs_disk_tools[@]}"
+        "${security_tools[@]}"
+        "${gui_apps[@]}"
+        "${embedded_tools[@]}"
+        "${misc_tools[@]}"
+    )
+    
+    install_apps "${all_packages[@]}"
+    
+    
+    # Skip pause if "-s" is passed
+    #if [ "$options" != "-s" ]; then
+        #pause
+    #fi
+    
+}
+
+install_snap_apps(){
+    
+    local options="${1:-}"
     
     # Install snap packages from snap_list.txt
     echo "Installing snap packages..."
@@ -305,10 +664,19 @@ install_apps() {
     sudo snap install code --classic
     sudo snap install codium --classic
     sudo snap install intellij-idea-ultimate --classic
+    
+    # Skip pause if "-s" is passed
+    #if [ "$options" != "-s" ]; then
+        #pause
+    #fi
+    
 }
 
 # Function to install .deb packages
 install_deb_packages() {
+    
+    local options="${1:-}"
+    
     DEB_URLS=(
         "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
         "https://github.com/balena-io/etcher/releases/download/v1.19.25/balena-etcher_1.19.25_amd64.deb"
@@ -332,10 +700,18 @@ install_deb_packages() {
     done
     
     echo ".deb packages installation complete."
+    
+    # Skip pause if "-s" is passed
+    #if [ "$options" != "-s" ]; then
+        #pause
+    #fi
 }
 
 # Function to install AppImages
 install_appimages() {
+    
+    local options="${1:-}"
+    
     APPIMAGE_URLS=(
         "https://github.com/audacity/audacity/releases/download/Audacity-3.7.1/audacity-linux-3.7.1-x64-22.04.AppImage"
         "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.2.0/OrcaSlicer_Linux_Ubuntu2404_V2.2.0.AppImage"
@@ -395,32 +771,14 @@ EOL
     done
     
     echo "AppImage packages installation complete."
+    
+    
+    # Skip pause if "-s" is passed
+    #if [ "$options" != "-s" ]; then
+        #pause
+    #fi
 }
 
-# Function for full setup
-full_setup() {
-
-    install_homebrew
-    install_java
-    install_nodejs
-    install_apps
-    install_deb_packages
-    install_appimages
-    
-    # Prompt for Kubuntu desktop installation
-    read -p "Do you want to install the Kubuntu desktop environment? (y/N): " INSTALL_KDE
-    if [[ "$INSTALL_KDE" =~ ^[Yy]$ ]]; then
-        install_kde
-    else
-        echo "Skipping Kubuntu desktop installation."
-    fi
-    
-    echo ""
-    echo "Full Setup Finished"
-    echo ""
-    
-    pause
-}
 
 # Function to install and start ssh-server
 
@@ -465,79 +823,102 @@ setup_ssh() {
     echo "    ssh <username>@${hostnameInfo}"
     echo ""
     
-    pause
+    #pause
     
-    show_menu
 }
 
-# Menu system
-show_menu() {
-    clear
-    echo "--------------------------------------------"
-    echo "Setup Script Menu"
-    echo "--------------------------------------------"
-    echo "1) Full setup (Homebrew, Java, Apps)"
-    echo "2) Add/Remove Java"
-    echo "3) Add Node.js®"
-    echo "4) Add Kubuntu Desktop"
-    echo "5) Remove Kubuntu Desktop"
-    echo "6) Set Up SSH Server"
-    echo "7) Exit"
-    echo "--------------------------------------------"
-    read -rp "Please select an option [1-7]: " choice
-    case $choice in
-        1)
-            full_setup
-        ;;
-        2)
-            echo "--------------------------------------------"
-            echo "Java Management"
-            echo "--------------------------------------------"
-            if $JAVA_INSTALLED; then
-                echo "Java is currently installed."
-                read -p "Do you want to remove Java? (y/N): " REMOVE_JAVA
-                if [[ "$REMOVE_JAVA" =~ ^[Yy]$ ]]; then
-                    remove_java
-                else
-                    echo "Java will not be removed."
-                fi
-            else
-                echo "Java is not installed."
-                read -p "Do you want to install Java? (y/N): " INSTALL_JAVA
-                if [[ "$INSTALL_JAVA" =~ ^[Yy]$ ]]; then
-                    install_homebrew
-                    install_java
-                else
-                    echo "Java will not be installed."
-                fi
-            fi
-        ;;
-        3)
-            install_nodejs
-        ;;
-        4)
-            # Add Kubuntu Desktop
-            install_kde
-        ;;
-        5)
-            # Remove Kubuntu Desktop
-            remove_kde
-        ;;
-        6)
-            # Set Up SSH
-            setup_ssh
-        ;;
-        7)
-            echo "Exiting."
-            exit 0
-        ;;
-        *)
-            echo "Invalid option. Please try again."
-            show_menu
-        ;;
-    esac
+################################################################################
+######       MENUs
+################################################################################
+
+# Main Menu
+main_menu(){
+    
+    while true; do
+        
+        clear
+        echo "--------------------------------------------"
+        echo "Ubuntu Setup Menu"
+        echo "--------------------------------------------"
+        echo "1) System Applications"
+        echo "2) Snap Applications"
+        echo "3) Deb Packages"
+        echo "4) App Images"
+        echo "5) All Applications (1,2,3,4)"
+        echo "6) Development Tools (make, etc...)"
+        echo "7) Add/Remove Java"
+        echo "8) Add Node.js®"
+        echo "9) Install Plasma Desktop"
+        echo "--------------------------------------------"
+        echo "10) Install Kubuntu Desktop"
+        echo "11) Remove Kubuntu Desktop"
+        echo "--------------------------------------------"
+        echo "12) Install Homebrew"
+        echo "--------------------------------------------"
+        echo "13) Set Up SSH Server"
+        echo "14) Full Applications and System Wide Update(s)"
+        echo "--------------------------------------------"
+        echo "15) Exit"
+        read -rp "Please select an option [1-15]: " choice
+        case $choice in
+            1)
+                install_apt_apps
+            ;;
+            2)
+                install_snap_apps
+            ;;
+            3)
+                install_deb_packages
+            ;;
+            4)
+                install_appimages
+            ;;
+            5)
+                install_applications_all
+            ;;
+            6)
+                install_development
+            ;;
+            7)
+                manage_java
+            ;;
+            8)
+                install_nodejs
+            ;;
+            9)
+                install_kde_plasma_desktop
+            ;;
+            10)
+                # Add Kubuntu Desktop
+                install_kde_desktop
+            ;;
+            11)
+                # Remove Kubuntu Desktop
+                remove_kde_desktop
+            ;;
+            12)
+                # Install Homebrew
+                install_homebrew
+            ;;
+            13)
+                # Set Up SSH
+                setup_ssh
+            ;;
+            14)
+                # Helper function for updating and upgrading the system
+                update_upgrade
+            ;;
+            15)
+                echo "Exiting."
+                exit 0
+            ;;
+            *)
+                echo "Invalid option. Please try again."
+                
+            ;;
+        esac
+        pause
+    done
 }
 
-# Main script execution
-show_menu
-
+main_menu
