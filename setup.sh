@@ -48,7 +48,6 @@ if command -v java &>/dev/null; then
     fi
 fi
 
-
 install_development()
 {
     
@@ -56,57 +55,17 @@ install_development()
     echo "📦 Installing Build Essentials"
     echo ""
     
-    #libtool-bin # Different from libtool
+    #libtool-bin # Different from libtool?
     
     sudo apt install --no-install-recommends \
-    cmake ninja-build automake autoconf autopoint libtool g++ pkg-config swig \
-    doxygen dpkg-dev graphviz libltdl-dev libc6-dev libcurl4-openssl-dev gettext intltool \
+    make cmake ninja-build automake autoconf autopoint libtool g++ pkg-config swig \
+    doxygen graphviz libltdl-dev libcurl4-openssl-dev gettext intltool \
     python3-setuptools python3-pip python3-wheel \
-    subversion git curl ccache
+    subversion git curl ccache dpkg-dev libc6-dev
     
     echo ""
     echo "✅ Build Essentials Installed"
     echo ""
-    
-    #pause
-    
-}
-
-##REMOVE
-
-# Function for full setup
-full_setup() {
-    
-    # Prompt for Homebrew installation
-    #read -p "Do you want to install the Homebrew environment? (y/N): " INSTALL_HB
-    #if [[ "$INSTALL_HB" =~ ^[Yy]$ ]]; then
-    #install_homebrew
-    #else
-    #echo "Skipping Homebrew installation."
-    #fi
-    
-    #install_homebrew_java
-    install_development
-    
-    install_nodejs
-    
-    # Prompt for Kubuntu desktop installation
-    read -p "Do you want to install the Plasma desktop environment? (y/N): " INSTALL_PLASMA
-    if [[ "$INSTALL_PLASMA" =~ ^[Yy]$ ]]; then
-        install_kde_plasma_desktop
-    else
-        echo "Skipping Plasma desktop installation."
-    fi
-    
-    install_apt_apps
-    install_deb_packages
-    install_appimages
-    
-    echo ""
-    echo "Full Setup Finished"
-    echo ""
-    
-    #pause
 }
 
 # Function to install Homebrew
@@ -153,8 +112,6 @@ install_homebrew() {
     # Set up CocoaPods
     echo "Setting up CocoaPods..."
     pod setup
-    
-    #pause
 }
 
 # Function to install Java
@@ -196,8 +153,6 @@ install_homebrew_java() {
     else
         echo "Java is already installed."
     fi
-    
-    #pause
 }
 
 # Function to remove Java
@@ -227,8 +182,6 @@ remove_java() {
     else
         echo "Java is not installed."
     fi
-    
-    #pause
 }
 
 ##REMOVE
@@ -309,7 +262,6 @@ manage_java() {
     main_menu
 }
 
-
 ################################################################################
 ######                          Node.JS
 ################################################################################
@@ -351,124 +303,115 @@ install_nodejs(){
     
     #sudo apt install -y --no-install-recommends nodejs
     echo "Installation of Node.js complete..."
-    
-    # Skip pause if "-s" is passed
-    #if [ "$options" != "-s" ]; then
-        #pause
-    #fi
-    
 }
 
 install_kde_plasma_desktop(){
     
-    # Prompt for Kubuntu desktop installation
-    #read -p "Do you want to install the Plasma desktop environment? (y/N): " INSTALL_PLASMA
-    #if [[ "$INSTALL_PLASMA" =~ ^[Yy]$ ]]; then
+    
+    echo "Installing KDE Plasma desktop..."
+    
+    #https://packages.debian.org/bookworm/kde/
+    
+    base_desktop=(
+        # Core Plasma shell and settings
+        kde-plasma-desktop
+        systemsettings
+        powerdevil
+        kscreen
+        #
+        kinfocenter
+        aha  clinfo  edid-decode  libdisplay-info-bin  libpulsedsp  mesa-utils  mesa-utils-bin  pulseaudio-utils  vulkan-tools  wayland-utils
+        #
+        kwin-x11
+        kdeconnect
+        qml6-module-org-kde-kdeconnect
+        kde-config-screenlocker
+        kde-config-gtk-style
+        qt5-gtk-platformtheme
+        kde-config-plymouth
+        kde-config-sddm
+        kde-config-tablet
+        kde-config-updates
+        kde-config-cron
+        kde-config-cddb
+        kde-config-flatpak
+        kde-config-gtk-style-preview
+        xdg-desktop-portal-kde
         
-        echo "Installing KDE Plasma desktop..."
+        # Plasma Discover (app store + backends)
+        plasma-discover
+        plasma-discover-backend-flatpak
+        plasma-discover-backend-snap
+        plasma-discover-backend-fwupd
         
-        #https://packages.debian.org/bookworm/kde/
+        # System tray and desktop extensions
+        plasma-pa                # Audio control
+        plasma-nm                # Network control
+        plasma-systemmonitor     # New system monitor UI
+        plasma-thunderbolt       # Thunderbolt settings
+        plasma-firewall          # Firewall GUI
+        plasma-vault             # Encrypted vaults
         
-        base_desktop=(
-            # Core Plasma shell and settings
-            kde-plasma-desktop
-            systemsettings
-            powerdevil
-            kscreen
-            #
-            kinfocenter
-            aha  clinfo  edid-decode  libdisplay-info-bin  libpulsedsp  mesa-utils  mesa-utils-bin  pulseaudio-utils  vulkan-tools  wayland-utils
-            #
-            kwin-x11
-            kdeconnect
-            qml6-module-org-kde-kdeconnect
-            kde-config-screenlocker
-            kde-config-gtk-style
-            qt5-gtk-platformtheme
-            kde-config-plymouth
-            kde-config-sddm
-            kde-config-tablet
-            kde-config-updates
-            kde-config-cron
-            kde-config-cddb
-            kde-config-flatpak
-            kde-config-gtk-style-preview
-            xdg-desktop-portal-kde
-            
-            # Plasma Discover (app store + backends)
-            plasma-discover
-            plasma-discover-backend-flatpak
-            plasma-discover-backend-snap
-            plasma-discover-backend-fwupd
-            
-            # System tray and desktop extensions
-            plasma-pa                # Audio control
-            plasma-nm                # Network control
-            plasma-systemmonitor     # New system monitor UI
-            plasma-thunderbolt       # Thunderbolt settings
-            plasma-firewall          # Firewall GUI
-            plasma-vault             # Encrypted vaults
-            
-            # Update and release notifications
-            plasma-discover-notifier
-            plasma-distro-release-notifier
-            
-            # Browser integration and welcome
-            plasma-browser-integration
-            #plasma-welcome
-            
-            # Widgets, calendar, engine add-ons
-            plasma-calendar-addons
-            plasma-dataengines-addons
-            plasma-widgets-addons
-            
-            # Appearance (themes, visuals)
-            plasma-theme-oxygen
-            plasma-workspace-wallpapers
-            plasma-wallpapers-addons
-            kdegraphics-thumbnailers
-            ffmpegthumbs
-            kio-extras
-            plymouth-theme-breeze
-            plymouth-theme-kubuntu-logo
-            plymouth-theme-kubuntu-text
-        )
+        # Update and release notifications
+        plasma-discover-notifier
+        plasma-distro-release-notifier
         
-        essential_kde_utilities=(
-            kmenuedit
-            ksshaskpass
-            kwalletmanager
-            ksystemlog
-            khelpcenter
-            kdf
-            partitionmanager
-            plasma-browser-integration
-            plasma-discover-notifier
-            plasma-disks
-            kcalc
-            kcharselect
-            kamera
-            bluedevil
-            print-manager
-        )
+        # Browser integration and welcome
+        plasma-browser-integration
+        #plasma-welcome
         
-        #sddm
-        #sddm-theme
-        #qt6-virtualkeyboard-plugin
+        # Widgets, calendar, engine add-ons
+        plasma-calendar-addons
+        plasma-dataengines-addons
+        plasma-widgets-addons
         
-        all_packages=(
-            "${base_desktop[@]}"
-            "${essential_kde_utilities[@]}"
-        )
-        
-        install_apps "${all_packages[@]}"
-        
+        # Appearance (themes, visuals)
+        plasma-theme-oxygen
+        plasma-workspace-wallpapers
+        plasma-wallpapers-addons
+        kdegraphics-thumbnailers
+        ffmpegthumbs
+        kio-extras
+        plymouth-theme-breeze
+        plymouth-theme-kubuntu-logo
+        plymouth-theme-kubuntu-text
+    )
+    
+    essential_kde_utilities=(
+        kmenuedit
+        ksshaskpass
+        kwalletmanager
+        ksystemlog
+        khelpcenter
+        kdf
+        kpartx
+        partitionmanager
+        plasma-browser-integration
+        plasma-discover-notifier
+        plasma-disks
+        kcalc
+        kcharselect
+        kamera
+        bluedevil
+        print-manager
+    )
+    
+    all_packages=(
+        "${base_desktop[@]}"
+        "${essential_kde_utilities[@]}"
+    )
+    
+    install_apps "${all_packages[@]}"
+    
+    # Prompt for sddm
+    #read -p "Do you want to install sddm? (y/N): " INSTALL_SDDM
+    #if [[ "$INSTALL_SDDM" =~ ^[Yy]$ ]]; then
+    #sddm
+    #sddm-theme
+    #qt6-virtualkeyboard-plugin
     #else
-    #    echo "Skipping Plasma desktop installation."
+    #    echo "Skipping sddm installation."
     #fi
-    
-    #pause
-    
 }
 
 # Function to install Kubuntu desktop
@@ -485,8 +428,6 @@ install_kde_desktop() {
     else
         echo "Skipping Kubuntu desktop installation."
     fi
-    
-    #pause
 }
 
 # Function to remove Kubuntu desktop
@@ -501,8 +442,6 @@ remove_kde_desktop() {
     else
         echo "Skipping Kubuntu desktop installation."
     fi
-    
-    #pause
 }
 
 # Function to reboot system
@@ -519,10 +458,17 @@ reboot_system() {
 update_upgrade() {
     #do-release-upgrade
     echo "🧩 Updating APT package lists..."
-    sudo apt update
+    sudo apt update --allow-releaseinfo-change
     
     echo "📦 Upgrading installed APT packages..."
-    sudo apt upgrade -y
+    sudo apt upgrade --fix-missing -y || {
+        echo "⚠️ First attempt failed, retrying after 5 seconds..."
+        sleep 5
+        sudo apt upgrade --fix-missing -y || {
+            echo "❌ Still failing. Mirrors may be broken. Exiting."
+            return 1
+        }
+    }
     
     echo "🔁 Performing full APT distribution upgrade..."
     sudo apt full-upgrade -y
@@ -546,7 +492,6 @@ update_upgrade() {
     echo ""
     echo "✅ System update complete."
     echo ""
-    #pause
 }
 
 install_apps() {
@@ -565,10 +510,8 @@ install_applications_all(){
     echo ""
     echo "✅ Full Setup Finished"
     echo ""
-    
-    #pause
 }
-# Function to install applications
+
 install_apt_apps() {
     
     local options="${1:-}"
@@ -577,7 +520,6 @@ install_apt_apps() {
     
     # Update and upgrade apt packages
     # update_upgrade
-    
     
     ### 🧰 Development Tools
     dev_tools=(
@@ -593,7 +535,7 @@ install_apt_apps() {
     ### 🐧 System Utilities
     system_utils=(
         unzip dos2unix flatpak fwupd geany gparted gpart
-        htop rpi-imager mtools kpartx subversion
+        htop rpi-imager mtools subversion
     )
     ### 💾 File System & Disk Tools
     fs_disk_tools=(
@@ -633,13 +575,6 @@ install_apt_apps() {
     )
     
     install_apps "${all_packages[@]}"
-    
-    
-    # Skip pause if "-s" is passed
-    #if [ "$options" != "-s" ]; then
-        #pause
-    #fi
-    
 }
 
 install_snap_apps(){
@@ -664,12 +599,6 @@ install_snap_apps(){
     sudo snap install code --classic
     sudo snap install codium --classic
     sudo snap install intellij-idea-ultimate --classic
-    
-    # Skip pause if "-s" is passed
-    #if [ "$options" != "-s" ]; then
-        #pause
-    #fi
-    
 }
 
 # Function to install .deb packages
@@ -700,11 +629,6 @@ install_deb_packages() {
     done
     
     echo ".deb packages installation complete."
-    
-    # Skip pause if "-s" is passed
-    #if [ "$options" != "-s" ]; then
-        #pause
-    #fi
 }
 
 # Function to install AppImages
@@ -771,17 +695,9 @@ EOL
     done
     
     echo "AppImage packages installation complete."
-    
-    
-    # Skip pause if "-s" is passed
-    #if [ "$options" != "-s" ]; then
-        #pause
-    #fi
 }
 
-
 # Function to install and start ssh-server
-
 setup_ssh() {
     echo "Installing and configuring SSH Server..."
     echo ""
@@ -822,9 +738,6 @@ setup_ssh() {
     echo "    ssh <username>@${ipAddress}"
     echo "    ssh <username>@${hostnameInfo}"
     echo ""
-    
-    #pause
-    
 }
 
 ################################################################################
