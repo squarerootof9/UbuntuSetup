@@ -1,234 +1,233 @@
 # UbuntuSetup
 
-# **Ubuntu Setup and Hosts Updater Scripts**
+## Ubuntu Setup and Hosts Updater Scripts
 
-This repository contains scripts to automate the setup of an Ubuntu system with preferred applications and configurations, and to enhance system security and privacy by updating the hosts file to block ads, phishing sites, and other malicious domains. The scripts are designed to work seamlessly on a fresh install and do not require any login credentials or accounts.
+This project provides two Bash scripts that streamline the configuration and maintenance of an Ubuntu system:
 
----
+* `setup.sh`: Automates software installation, desktop environment setup, Java management, and system updating.
+* `hosts_updater.sh`: Updates your system's hosts file to block ads, trackers, and malicious domains.
 
-## **Table of Contents**
-
-- [Overview](#overview)
-- [Setup Script (`setup.sh`)](#setup-script-setupsh)
-  - [Features](#features)
-  - [Usage](#usage)
-- [Hosts Updater Script (`hosts_updater.sh`)](#hosts-updater-script-hosts_updatersh)
-  - [Purpose](#purpose)
-  - [Usage](#usage-1)
-  - [How It Works](#how-it-works)
-  - [Compatibility](#compatibility)
-- [Important Notes](#important-notes)
-- [Description](#description)
-- [License](#license)
-- [Contributing](#contributing)
-- [Acknowledgements](#acknowledgements)
-- [Contact](#contact)
+These scripts are designed for fresh installs, require no online accounts, and are modular for repeatable and customizable use.
 
 ---
 
-## **Overview**
+## Table of Contents
 
-This project aims to simplify the initial setup of an Ubuntu system by automating the installation of essential applications and configuring system preferences to your liking. Additionally, it enhances your system's security and privacy by updating the hosts file to block unwanted domains.
+* [Overview](#overview)
+* [Setup Script (`setup.sh`)](#setup-script-setupsh)
 
----
+  * [Features](#features)
+  * [Usage](#usage)
+* [Hosts Updater Script (`hosts_updater.sh`)](#hosts-updater-script-hosts_updatersh)
 
-## **Setup Script (`setup.sh`)**
-
-### **Features**
-
-- **Automates Installation of Applications:**
-  - Installs Homebrew (Linuxbrew) if not already installed.
-  - Installs Java via Homebrew and configures environment variables.
-  - Installs various packages and applications using `apt`, `snap`, and Homebrew.
-  - Installs AppImage applications and creates desktop entries for them.
-  - Provides options to install or remove the Kubuntu desktop environment.
-
-- **Configurable and Modular:**
-  - Features a menu system allowing you to choose between full setup or individual components.
-  - Functions are modular and can be reused or modified as needed.
-
-- **Designed for Fresh Installs:**
-  - Ideal for setting up a new Ubuntu installation.
-  - Does not require any login credentials or accounts to install software.
-
-### **Usage**
-
-1. **Clone the Repository:**
-
-   ```bash
-   git clone https://github.com/squarerootof9/UbuntuSetup
-   cd UbuntuSetup
-   ```
-
-2. **Make the Script Executable:**
-
-   ```bash
-   chmod +x setup.sh
-   ```
-
-3. **Run the Script:**
-
-   ```bash
-   ./setup.sh
-   ```
-
-4. **Follow the On-Screen Menu:**
-
-   The script presents a menu with options:
-
-   ```
-   --------------------------------------------
-   Setup Script Menu
-   --------------------------------------------
-   1) Full setup (Homebrew, Java, Apps)
-   2) Add/Remove Java
-   3) Add Kubuntu Desktop
-   4) Remove Kubuntu Desktop
-   5) Exit
-   --------------------------------------------
-   Please select an option [1-5]:
-   ```
-
-   - **Option 1:** Performs the full setup, including installing Homebrew, Java, applications, and optionally the Kubuntu desktop environment.
-   - **Option 2:** Allows you to install or remove Java.
-   - **Option 3:** Installs the Kubuntu desktop environment.
-   - **Option 4:** Removes the Kubuntu desktop environment.
-   - **Option 5:** Exits the script.
-
-5. **Reboot If Necessary:**
-
-   - If you install or remove the Kubuntu desktop environment, the script will prompt you to reboot your system to apply the changes.
+  * [Purpose](#purpose)
+  * [Usage](#usage-1)
+  * [How It Works](#how-it-works)
+  * [Compatibility](#compatibility)
+* [Important Notes](#important-notes)
+* [License](#license)
+* [Contributing](#contributing)
+* [Acknowledgements](#acknowledgements)
+* [Contact](#contact)
 
 ---
 
-## **Hosts Updater Script (`hosts_updater.sh`)**
+## Overview
 
-### **Purpose**
+These scripts simplify system setup and maintenance for Ubuntu users. Whether you're configuring a workstation from scratch or managing multiple devices, this toolset offers modular, clear, and automated options for:
 
-The `hosts_updater.sh` script updates your system's hosts file to block ads, phishing sites, malware domains, and other malicious websites. This enhances your privacy and security while browsing the internet.
-
-### **Usage**
-
-1. **Make the Script Executable:**
-
-   ```bash
-   chmod +x hosts_updater.sh
-   ```
-
-2. **Run the Script:**
-
-   ```bash
-   ./hosts_updater.sh
-   ```
-
-3. **Select an Option:**
-
-   The script presents a menu with three options:
-
-   ```
-   --------------------------------------------
-   Hosts File Updater Script
-   --------------------------------------------
-   1) Add/Update hosts entries
-   2) Remove hosts entries
-   3) Exit
-   --------------------------------------------
-   Please select an option [1-3]:
-   ```
-
-   - **Option 1:** Downloads the latest hosts file and updates your system's hosts file.
-   - **Option 2:** Removes the entries added by this script.
-   - **Option 3:** Exits the script.
-
-### **How It Works**
-
-- **Downloading Hosts File:**
-
-  - The script downloads a hosts file from a trusted source: [MVPS Hosts](https://winhelp2002.mvps.org/hosts.htm).
-  - The hosts file contains mappings of known malicious domains to `0.0.0.0`, effectively blocking them.
-
-- **Updating the Hosts File:**
-
-  - The script backs up your existing `/etc/hosts` file.
-  - It removes any previous entries added by itself to avoid duplicates.
-  - It appends the new entries, enclosed within identifiable comments for easy management.
-
-- **Flushing DNS Cache:**
-
-  - After updating the hosts file, the script flushes the DNS cache to ensure changes take effect immediately.
-  - Works on both Ubuntu and macOS by detecting the operating system and using the appropriate commands.
-
-### **Compatibility**
-
-- **Cross-Platform Support:**
-
-  - The script is designed to work on both **Ubuntu** and **macOS** systems.
-  - It automatically detects the operating system and adjusts its operations accordingly.
-
-- **No Dependencies on Logins or Accounts:**
-
-  - The script does not require any login credentials or additional setup.
-  - Ideal for fresh installations where minimal configuration has been done.
+* Desktop environment management
+* AppImage/Snap/Flatpak setup
+* System updating (APT/Snap/Flatpak)
+* Java version control
+* Privacy-focused hosts file configuration
 
 ---
 
-## **Important Notes**
+## Setup Script (`setup.sh`)
 
-- **Administrative Privileges:**
+### Features
 
-  - Both the `setup.sh` and `hosts_updater.sh` scripts may require `sudo` privileges to execute certain commands (e.g., modifying system files).
-
-- **Backups:**
-
-  - The `hosts_updater.sh` script creates backups of your hosts file before making any changes. Backup files are stored with a timestamp (e.g., `/etc/hosts.backup.YYYYMMDDHHMMSS`).
-
-- **Customizations:**
-
-  - You can customize the list of applications and packages in the `setup.sh` script to suit your needs.
-  - The `snap_list.txt` file can be edited to include the snap packages you wish to install.
-
-- **Testing:**
-
-  - It is recommended to test the scripts in a controlled environment or virtual machine before running them on a production system.
-
-- **No Login Required:**
-
-  - All installations and configurations are performed without the need for any login credentials.
-  - The scripts fetch applications and updates from open-source repositories and trusted sources.
+* Desktop environment management
+* AppImage/Snap/Flatpak setup
+* System updating (APT/Snap/Flatpak)
+* Java version control
+* Privacy-focused hosts file configuration
 
 ---
 
-## **License**
+## Setup Script (`setup.sh`)
+
+### Features
+
+* **Java Version Management**:
+
+  * Install or remove OpenJDK versions 8 through 24 (excluding experimental CRaC builds).
+  * Optional Homebrew-based Java installation and environment configuration.
+
+* **Multi-source Package Management**:
+
+  * Install applications via `apt`, `snap`, `flatpak`, or `brew`.
+  * Supports AppImage deployment with desktop entry generation.
+
+* **Desktop Environment Control**:
+
+  * Install or remove the Kubuntu desktop environment.
+
+* **Java Version Selection**:
+
+  * Choose from OpenJDK versions 8 through 24 (excluding experimental CRaC builds).
+  * Optionally install Homebrew-managed Java.
+
+* **Full System Updates**:
+
+  * Runs `apt update/upgrade/full-upgrade`, `snap refresh`, and `flatpak update`.
+
+* **Modular, Menu-Driven Flow**:
+
+  * Designed for both full setup and individual tasks.
+
+### Usage
+
+1. **Clone the Repository**:
+
+```bash
+git clone https://github.com/squarerootof9/UbuntuSetup
+cd UbuntuSetup
+```
+
+2. **Make the Script Executable**:
+
+```bash
+chmod +x setup.sh
+```
+
+3. **Run the Script**:
+
+```bash
+./setup.sh
+```
+
+4. **Interact With the Menu**:
+
+```
+--------------------------------------------
+Ubuntu Setup Menu
+--------------------------------------------
+1) System Applications
+2) Snap Applications
+3) Deb Packages
+4) App Images
+5) All Applications (1,2,3,4)
+6) Development Tools (make, etc...)
+7) Add/Remove Java
+8) Add Node.js®
+9) Install Plasma Desktop
+--------------------------------------------
+10) Install Kubuntu Desktop
+11) Remove Kubuntu Desktop
+--------------------------------------------
+12) Install Homebrew
+--------------------------------------------
+13) Set Up SSH Server
+14) Full Applications and System Wide Update(s)
+--------------------------------------------
+15) Exit
+Please select an option [1-15]:
+```
+
+Each option walks you through the selected action. You can run the script multiple times to change or add components.
+
+---
+
+## Hosts Updater Script (`hosts_updater.sh`)
+
+### Purpose
+
+This script blocks unwanted web domains by updating `/etc/hosts`. It helps:
+
+* Stop ads and trackers
+* Block malicious domains
+* Improve page load speeds
+
+### Usage
+
+1. **Make Executable**:
+
+```bash
+chmod +x hosts_updater.sh
+```
+
+2. **Run the Script**:
+
+```bash
+./hosts_updater.sh
+```
+
+3. **Choose an Option**:
+
+```
+--------------------------------------------
+Hosts File Updater Script
+--------------------------------------------
+1) Add/Update hosts entries
+2) Remove hosts entries
+3) Exit
+--------------------------------------------
+```
+
+* **Option 1**: Installs or updates the blocklist.
+* **Option 2**: Reverts changes and restores backup.
+* **Option 3**: Exits.
+
+### How It Works
+
+* Downloads a curated blocklist from [MVPS Hosts](https://winhelp2002.mvps.org/hosts.htm)
+* Backs up your existing `/etc/hosts`
+* Inserts or removes managed entries
+* Flushes DNS cache as needed
+
+### Compatibility
+
+* Supports **Ubuntu** and **macOS**
+* Detects OS automatically and uses proper tools
+* Does not require user accounts or logins
+
+---
+
+## Important Notes
+
+* **Sudo Required**: Some options require administrative access.
+* **Safe Defaults**: The scripts back up files before modifying them.
+* **Customizable**: Edit the script to add or remove packages, paths, or versions.
+* **Modular Workflow**: Re-run safely to install new components later.
+
+---
+
+## License
 
 This project is licensed under the MIT License.
 
-```
-MIT License
+---
 
-[Full MIT License Text]
-```
+## Contributing
+
+Pull requests and suggestions are welcome. Contributions should follow a modular design philosophy and strive for clean, auditable Bash code.
 
 ---
 
-## **Contributing**
+## Acknowledgements
 
-Contributions are welcome! If you have suggestions, improvements, or fixes, feel free to open an issue or submit a pull request.
-
----
-
-## **Acknowledgements**
-
-- **Homebrew (Linuxbrew):** The missing package manager for Linux.
-- **snap:** A software packaging and deployment system.
-- **MVPS Hosts:** Provides a comprehensive hosts file to block unwanted domains.
+* [Homebrew (Linuxbrew)](https://docs.brew.sh/Homebrew-on-Linux)
+* Snap, Flatpak, and AppImage maintainers
+* [MVPS Hosts Project](https://winhelp2002.mvps.org/hosts.htm)
 
 ---
 
-## **Contact**
+## Contact
 
-For questions or support, please open an issue on the repository or contact [Your Email].
+Submit issues or questions via GitHub.
 
 ---
 
-**Note:** Always review scripts and understand their functions before running them, especially when they modify system files or require administrative privileges.
-
+**Note**: Always review scripts before running them. These scripts modify system files and install software packages.
