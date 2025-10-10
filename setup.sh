@@ -914,6 +914,10 @@ iptables_secure() {
 		;;
 	esac
 
+	if command -v netfilter-persistent &>/dev/null; then
+		sudo apt install --no-install-recommends -y iptables-persistent netfilter-persistent
+	fi
+
 	sudo netfilter-persistent save
 
 }
