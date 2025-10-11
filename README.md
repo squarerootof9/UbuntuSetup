@@ -130,10 +130,11 @@ Ubuntu Setup Menu
 12) Install Homebrew
 --------------------------------------------
 13) Set Up SSH Server
-14) Full Applications and System Wide Update(s)
+14) Firewall / IPTables Setup
+15) Full Applications and System Update(s)
 --------------------------------------------
-15) Exit
-Please select an option [1-15]:
+16) Exit
+Please select an option [1-16]:
 ```
 
 Each option walks you through the selected action. You can run the script multiple times to change or add components.
