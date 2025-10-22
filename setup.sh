@@ -706,6 +706,24 @@ EOL
 	echo "AppImage packages installation complete."
 }
 
+iptables_save() {
+
+	if ! command -v netfilter-persistent &>/dev/null; then
+		sudo DEBIAN_FRONTEND=noninteractive apt install --no-install-recommends -y iptables-persistent netfilter-persistent
+	fi
+
+	# Try the standard save; on failure, write rules directly and enable service
+	if ! sudo netfilter-persistent save; then
+		echo "netfilter-persistent save failed; writing rules directly..."
+		sudo mkdir -p /etc/iptables
+		sudo iptables-save | sudo tee /etc/iptables/rules.v4 >/dev/null
+		sudo ip6tables-save | sudo tee /etc/iptables/rules.v6 >/dev/null
+		sudo systemctl enable --now netfilter-persistent
+	fi
+
+	echo "✅ iptables and ip6tables saved."
+}
+
 # Function to install and start ssh-server
 setup_ssh() {
 	echo "Installing and configuring SSH Server..."
@@ -737,7 +755,9 @@ setup_ssh() {
 			sudo ip6tables -A INPUT -i "$WAN_IF" -p tcp --dport 22 -j ACCEPT
 
 		echo "✅ SSH port exposed on "$WAN_IF"."
-		sudo netfilter-persistent save
+
+		iptables_save
+
 		;;
 	*)
 		echo "❌ SSH exposure canceled."
@@ -761,6 +781,7 @@ setup_ssh() {
 	# Attempt to fetch first detected IP (may need adjustment in multi-NIC systems)
 	ipAddress=$(hostname -I | awk '{print $1}')
 
+	echo ""
 	echo "Further configuration:"
 	echo " - To edit SSH settings, run: sudo nano /etc/ssh/sshd_config"
 	echo " - Then restart SSH with:   sudo systemctl restart ssh"
@@ -914,11 +935,7 @@ iptables_secure() {
 		;;
 	esac
 
-	if ! command -v netfilter-persistent &>/dev/null; then
-		sudo apt install --no-install-recommends -y iptables-persistent netfilter-persistent
-	fi
-
-	sudo netfilter-persistent save
+	iptables_save
 
 }
 
