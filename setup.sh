@@ -567,6 +567,23 @@ install_apt_apps() {
 	remote_tools=(
 		curl wget elinks
 	)
+
+	### 🌐 Network Utilities
+	network_tools=(
+		net-tools
+		traceroute
+		dnsutils
+		netcat-openbsd
+	)
+
+	### 🛰️ Nmap & Companion Tools
+	nmap_tools=(
+		nmap
+		ncat
+		ndiff
+		zenmap
+	)
+
 	### 🛠 Miscellaneous / Special Purpose
 	misc_tools=(
 		rpi-imager python-is-python3
@@ -580,6 +597,9 @@ install_apt_apps() {
 		"${security_tools[@]}"
 		"${gui_apps[@]}"
 		"${embedded_tools[@]}"
+		"${remote_tools[@]}"
+		"${network_tools[@]}"
+		"${nmap_tools[@]}"
 		"${misc_tools[@]}"
 	)
 
