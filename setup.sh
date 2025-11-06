@@ -320,6 +320,7 @@ install_kde_plasma_desktop() {
 		kscreen
 		#
 		kinfocenter
+		kio-admin
 		aha clinfo edid-decode libdisplay-info-bin libpulsedsp mesa-utils mesa-utils-bin pulseaudio-utils vulkan-tools wayland-utils
 		#
 		kwin-x11
