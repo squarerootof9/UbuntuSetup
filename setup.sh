@@ -503,6 +503,17 @@ update_upgrade() {
 	echo ""
 }
 
+update_system() {
+
+	read -p "Check for system upgrade now? (y/N): " UPGRADE
+	if [[ "$UPGRADE" =~ ^[Yy]$ ]]; then
+		echo "Follow the on-screen prompts during the upgrade process. This may involve downloading new packages, making decisions about configurations, and potentially a system reboot."
+		sudo do-release-upgrade
+	else
+		echo "Skipping system update."
+	fi
+}
+
 install_apps() {
 	local packages=("$@")
 	echo "Installing: ${packages[*]}"
@@ -544,7 +555,7 @@ install_apt_apps() {
 	### 🐧 System Utilities
 	system_utils=(
 		unzip dos2unix flatpak fwupd geany gparted gpart
-		htop rpi-imager mtools subversion
+		htop rpi-imager mtools subversion lm-sensors
 	)
 	### 💾 File System & Disk Tools
 	fs_disk_tools=(
@@ -587,6 +598,7 @@ install_apt_apps() {
 	### 🛠 Miscellaneous / Special Purpose
 	misc_tools=(
 		rpi-imager python-is-python3
+		#synaptic
 		#dotnet-sdk-9.0
 	)
 
@@ -990,9 +1002,10 @@ main_menu() {
 		echo "13) Set Up SSH Server"
 		echo "14) Firewall / IPTables Setup"
 		echo "15) Full Applications and System Update(s)"
+		echo "16) Operating System Upgrade"
 		echo "--------------------------------------------"
-		echo "16) Exit"
-		read -rp "Please select an option [1-16]: " choice
+		echo "17) Exit"
+		read -rp "Please select an option [1-17]: " choice
 		case $choice in
 		1)
 			install_apt_apps
@@ -1045,6 +1058,9 @@ main_menu() {
 			update_upgrade
 			;;
 		16)
+			update_system
+			;;
+		17)
 			echo "Exiting."
 			exit 0
 			;;
