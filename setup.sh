@@ -321,6 +321,7 @@ install_kde_plasma_desktop() {
 		#
 		kinfocenter
 		kio-admin
+		konsole
 		aha clinfo edid-decode libdisplay-info-bin libpulsedsp mesa-utils mesa-utils-bin pulseaudio-utils vulkan-tools wayland-utils
 		#
 		kwin-x11
@@ -364,12 +365,17 @@ install_kde_plasma_desktop() {
 		# Widgets, calendar, engine add-ons
 		plasma-calendar-addons
 		plasma-dataengines-addons
+		plasma-runners-addons
 		plasma-widgets-addons
 
 		# Appearance (themes, visuals)
 		plasma-theme-oxygen
 		plasma-workspace-wallpapers
 		plasma-wallpapers-addons
+		
+		#add this only after it's updated to qt6
+		#plasma-wallpaper-dynamic
+
 		kdegraphics-thumbnailers
 		ffmpegthumbs
 		kio-extras
@@ -404,15 +410,46 @@ install_kde_plasma_desktop() {
 
 	install_apps "${all_packages[@]}"
 
+	install_sddm
+
+}
+
+install_sddm() {
+
 	# Prompt for sddm
-	#read -p "Do you want to install sddm? (y/N): " INSTALL_SDDM
-	#if [[ "$INSTALL_SDDM" =~ ^[Yy]$ ]]; then
-	#sddm
-	#sddm-theme
-	#qt6-virtualkeyboard-plugin
-	#else
-	#    echo "Skipping sddm installation."
-	#fi
+	read -p "Do you want to install sddm? (y/N): " INSTALL_SDDM
+	if [[ "$INSTALL_SDDM" =~ ^[Yy]$ ]]; then
+
+		sddm=(
+			sddm
+			xserver-xorg-input-libinput
+			sddm-theme-breeze
+			#qt6-virtualkeyboard-plugin
+			#sddm-conf
+			#qt6-qtwayland
+		)
+
+		#old pre-libinput event driver
+		#xserver-xorg-input-evdev
+		#old touchpad driver (deprecated)
+		#xserver-xorg-input-synaptics
+		#pre-USB PS/2 mouse fallback
+		#xserver-xorg-input-mouse
+		#old XKB keyboard fallback
+		#xserver-xorg-input-keyboard
+		#meta-package that installs everything
+		#xserver-xorg-input-all
+
+		packages=(
+			"${sddm[@]}"
+		)
+
+		install_apps "${packages[@]}"
+
+	else
+		echo "Skipping sddm installation."
+	fi
+
 }
 
 # Function to install Kubuntu desktop
@@ -679,8 +716,8 @@ install_appimages() {
 	local options="${1:-}"
 
 	APPIMAGE_URLS=(
-		"https://github.com/audacity/audacity/releases/download/Audacity-3.7.1/audacity-linux-3.7.1-x64-22.04.AppImage"
-		"https://github.com/SoftFever/OrcaSlicer/releases/download/v2.2.0/OrcaSlicer_Linux_Ubuntu2404_V2.2.0.AppImage"
+		"https://github.com/audacity/audacity/releases/download/Audacity-3.7.5/audacity-linux-3.7.5-x64-22.04.AppImage"
+		"https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
 		"https://github.com/OpenShot/openshot-qt/releases/download/v3.3.0/OpenShot-v3.3.0-x86_64.AppImage"
 	)
 	APP_NAMES=(
