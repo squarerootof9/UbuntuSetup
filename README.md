@@ -132,9 +132,10 @@ Ubuntu Setup Menu
 13) Set Up SSH Server
 14) Firewall / IPTables Setup
 15) Full Applications and System Update(s)
+16) Operating System Upgrade
 --------------------------------------------
-16) Exit
-Please select an option [1-16]:
+17) Exit
+Please select an option [1-17]:
 ```
 
 Each option walks you through the selected action. You can run the script multiple times to change or add components.
