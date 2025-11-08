@@ -114,28 +114,36 @@ chmod +x setup.sh
 --------------------------------------------
 Ubuntu Setup Menu
 --------------------------------------------
+Core Application Setup
 1) System Applications
 2) Snap Applications
 3) Deb Packages
 4) App Images
 5) All Applications (1,2,3,4)
-6) Development Tools (make, etc...)
-7) Add/Remove Java
-8) Add Node.js®
-9) Install Plasma Desktop
---------------------------------------------
-10) Install Kubuntu Desktop
-11) Remove Kubuntu Desktop
---------------------------------------------
-12) Install Homebrew
---------------------------------------------
-13) Set Up SSH Server
-14) Firewall / IPTables Setup
-15) Full Applications and System Update(s)
-16) Operating System Upgrade
---------------------------------------------
-17) Exit
-Please select an option [1-17]:
+6) Balena-Etcher
+
+Development Tools
+7) Development Utilities (make, etc...)
+8) Add/Remove Java
+9) Add Node.js®
+10) Install Homebrew
+
+Desktop Environments
+11) Install Plasma Desktop
+12) Install Kubuntu Desktop
+13) Remove Kubuntu Desktop
+
+System Configuration
+14) Set Up SSH Server
+15) Firewall / IPTables Setup
+
+System Maintenance
+16) Full Applications and System Update(s)
+17) Operating System Upgrade
+
+18) Exit
+
+Please select an option [1-18]:
 ```
 
 Each option walks you through the selected action. You can run the script multiple times to change or add components.

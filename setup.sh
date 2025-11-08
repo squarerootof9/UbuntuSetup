@@ -372,7 +372,7 @@ install_kde_plasma_desktop() {
 		plasma-theme-oxygen
 		plasma-workspace-wallpapers
 		plasma-wallpapers-addons
-		
+
 		#add this only after it's updated to qt6
 		#plasma-wallpaper-dynamic
 
@@ -543,13 +543,18 @@ update_upgrade() {
 
 update_system() {
 
-	read -p "Check for system upgrade now? (y/N): " UPGRADE
-	if [[ "$UPGRADE" =~ ^[Yy]$ ]]; then
-		echo "Follow the on-screen prompts during the upgrade process. This may involve downloading new packages, making decisions about configurations, and potentially a system reboot."
-		sudo do-release-upgrade
-	else
-		echo "Skipping system update."
-	fi
+	echo "The upgrade process may reboot or exit this script."
+	echo "Continue? (y/N)"
+	read -r ans
+	[[ "$ans" =~ ^[Yy]$ ]] && exec sudo do-release-upgrade
+
+	#read -p "Check for system upgrade now? (y/N): " UPGRADE
+	#if [[ "$UPGRADE" =~ ^[Yy]$ ]]; then
+	#echo "Follow the on-screen prompts during the upgrade process. This may involve downloading new packages, making decisions about configurations, and potentially a system reboot."
+	#sudo do-release-upgrade
+	#else
+	#echo "Skipping system update."
+	#fi
 }
 
 install_apps() {
@@ -680,6 +685,56 @@ install_snap_apps() {
 	sudo snap install intellij-idea-ultimate --classic
 }
 
+install_etcher_portable() {
+	echo "Installing Balena Etcher (portable)..."
+
+	local base_dir="$HOME/.local/share/balena-etcher"
+	local downloadFile="balenaEtcher-linux-x64-2.1.4"
+	local archive="${downloadFile}.zip"
+
+	mkdir -p "$base_dir"
+	cd "$base_dir" || {
+		echo "Failed to enter $base_dir"
+		return 1
+	}
+
+	# Download if missing
+	if [[ ! -f "$archive" ]]; then
+		echo "Downloading $archive..."
+		curl -L -o "$archive" \
+			"https://github.com/balena-io/etcher/releases/download/v2.1.4/${archive}"
+	fi
+
+	# Unpack
+	unzip -oq "$archive"
+	mv -f "$base_dir/balenaEtcher-linux-x64" "$base_dir/$downloadFile"
+	cd "$base_dir/$downloadFile" || {
+		echo "Unzip failed."
+		return 1
+	}
+
+	# Fix sandbox permissions
+	chmod +x balena-etcher
+	sudo chown root:root chrome-sandbox
+	sudo chmod 4755 chrome-sandbox
+
+	# Create/refresh system-wide link
+	sudo ln -sf "$base_dir/$downloadFile/balena-etcher" /usr/local/bin/balena-etcher
+
+	# Desktop entry
+	mkdir -p ~/.local/share/applications
+	cat <<EOF >~/.local/share/applications/balena-etcher.desktop
+[Desktop Entry]
+Type=Application
+Name=Balena Etcher
+Exec=/usr/local/bin/balena-etcher
+Icon=media-removable
+Categories=Utility;
+EOF
+
+	echo "✅ Etcher installed. Run with: balena-etcher"
+}
+
 # Function to install .deb packages
 install_deb_packages() {
 
@@ -687,7 +742,6 @@ install_deb_packages() {
 
 	DEB_URLS=(
 		"https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
-		"https://github.com/balena-io/etcher/releases/download/v1.19.25/balena-etcher_1.19.25_amd64.deb"
 		"https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
 	)
 	DOWNLOAD_DIR="$HOME/Downloads"
@@ -1019,31 +1073,53 @@ main_menu() {
 	while true; do
 
 		clear
+		# Define color variables
+		RED='\033[0;31m'
+		GREEN='\033[0;32m'
+		YELLOW='\033[1;33m'
+		CYAN='\033[0;36m'
+		NC='\033[0m' # No Color
+
+		SEC_TOP=""
+		#SEC_TOP="--------------------------------------------"
+
+		SEC_BOT=""
+		#SEC_BOT="--------------------------------------------"
+
 		echo "--------------------------------------------"
-		echo "Ubuntu Setup Menu"
+		echo -e "${CYAN}Ubuntu Setup Menu${NC}"
 		echo "--------------------------------------------"
+		echo -e "${YELLOW}Core Application Setup${NC}"
 		echo "1) System Applications"
 		echo "2) Snap Applications"
 		echo "3) Deb Packages"
 		echo "4) App Images"
 		echo "5) All Applications (1,2,3,4)"
-		echo "6) Development Tools (make, etc...)"
-		echo "7) Add/Remove Java"
-		echo "8) Add Node.js®"
-		echo "9) Install Plasma Desktop"
-		echo "--------------------------------------------"
-		echo "10) Install Kubuntu Desktop"
-		echo "11) Remove Kubuntu Desktop"
-		echo "--------------------------------------------"
-		echo "12) Install Homebrew"
-		echo "--------------------------------------------"
-		echo "13) Set Up SSH Server"
-		echo "14) Firewall / IPTables Setup"
-		echo "15) Full Applications and System Update(s)"
-		echo "16) Operating System Upgrade"
-		echo "--------------------------------------------"
-		echo "17) Exit"
-		read -rp "Please select an option [1-17]: " choice
+		echo "6) Balena-Etcher"
+		echo $SEC_BOT
+		echo -e "${YELLOW}Development Tools${NC}"
+		echo "7) Development Utilities (make, etc...)"
+		echo "8) Add/Remove Java"
+		echo "9) Add Node.js®"
+		echo "10) Install Homebrew"
+		echo $SEC_BOT
+		echo -e "${YELLOW}Desktop Environments${NC}"
+		echo "11) Install Plasma Desktop"
+		echo "12) Install Kubuntu Desktop"
+		echo "13) Remove Kubuntu Desktop"
+		echo $SEC_BOT
+		echo -e "${YELLOW}System Configuration${NC}"
+		echo "14) Set Up SSH Server"
+		echo "15) Firewall / IPTables Setup"
+		echo $SEC_BOT
+		echo -e "${YELLOW}System Maintenance${NC}"
+		echo "16) Full Applications and System Update(s)"
+		echo "17) Operating System Upgrade"
+		echo $SEC_BOT
+		echo -e "${RED}18) Exit${NC}"
+		echo ""
+		read -rp "Please select an option [1-18]: " choice
+
 		case $choice in
 		1)
 			install_apt_apps
@@ -1061,50 +1137,52 @@ main_menu() {
 			install_applications_all
 			;;
 		6)
-			install_development
+			install_etcher_portable
 			;;
 		7)
-			manage_java
+			install_development
 			;;
 		8)
-			install_nodejs
+			manage_java
 			;;
 		9)
-			install_kde_plasma_desktop
+			install_nodejs
 			;;
 		10)
-			# Add Kubuntu Desktop
-			install_kde_desktop
-			;;
-		11)
-			# Remove Kubuntu Desktop
-			remove_kde_desktop
-			;;
-		12)
 			# Install Homebrew
 			install_homebrew
 			;;
+		11)
+			install_kde_plasma_desktop
+			;;
+		12)
+			# Add Kubuntu Desktop
+			install_kde_desktop
+			;;
 		13)
+			# Remove Kubuntu Desktop
+			remove_kde_desktop
+			;;
+		14)
 			# Set Up SSH
 			setup_ssh
 			;;
-		14)
+		15)
 			iptables_secure
 			;;
-		15)
+		16)
 			# Helper function for updating and upgrading the system
 			update_upgrade
 			;;
-		16)
+		17)
 			update_system
 			;;
-		17)
+		18)
 			echo "Exiting."
 			exit 0
 			;;
 		*)
 			echo "Invalid option. Please try again."
-
 			;;
 		esac
 		pause
