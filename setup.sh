@@ -320,7 +320,6 @@ install_kde_plasma_desktop() {
 		kscreen
 		#
 		kinfocenter
-		kio-admin
 		konsole
 		aha clinfo edid-decode libdisplay-info-bin libpulsedsp mesa-utils mesa-utils-bin pulseaudio-utils vulkan-tools wayland-utils
 		#
@@ -329,7 +328,7 @@ install_kde_plasma_desktop() {
 		qml6-module-org-kde-kdeconnect
 		kde-config-screenlocker
 		kde-config-gtk-style
-		qt5-gtk-platformtheme
+		#qt5-gtk-platformtheme #qt5 🤔 apt rdepends --installed libqt5core5t64
 		kde-config-plymouth
 		kde-config-sddm
 		kde-config-tablet
@@ -378,13 +377,35 @@ install_kde_plasma_desktop() {
 
 		kdegraphics-thumbnailers
 		ffmpegthumbs
-		kio-extras
+		kimageformat6-plugins
 		plymouth-theme-breeze
 		plymouth-theme-kubuntu-logo
 		plymouth-theme-kubuntu-text
 	)
 
+	kde_kio_modules=(
+		# === Ubuntu-Available KIO Modules ===
+		kio-admin       # Root/administrator access (PolicyKit integration)
+		kio-audiocd     # Access audio CDs
+		kio-extras      # Adds common protocols (ftp, smb, tar, man, etc.)
+		kio-extras-data # Data for kio-extras
+		kio-fuse        # Mount KIO paths as FUSE filesystems
+		kio-gdrive      # Google Drive integration
+		#kio-gopher      # Gopher protocol (yes, still exists!) #qt5 🤔 apt rdepends --installed libqt5core5t64
+		kio-ldap    # LDAP directory browsing
+		kio-perldoc # Perl documentation integration
+	)
+
+	bluetooth_libs=(
+		bluez
+		bluez-obexd
+		bluedevil
+		bluetooth
+		bluez-tools
+	)
+
 	essential_kde_utilities=(
+		dolphin-plugins
 		kmenuedit
 		ksshaskpass
 		kwalletmanager
@@ -399,12 +420,13 @@ install_kde_plasma_desktop() {
 		kcalc
 		kcharselect
 		kamera
-		bluedevil
 		print-manager
 	)
 
 	all_packages=(
 		"${base_desktop[@]}"
+		"${kde_kio_modules[@]}"
+		"${bluetooth_libs[@]}"
 		"${essential_kde_utilities[@]}"
 	)
 
@@ -450,6 +472,45 @@ install_sddm() {
 		echo "Skipping sddm installation."
 	fi
 
+}
+
+kde_settings() {
+
+	################################
+	# Configure Plasma/Dolphin/KDE #
+	################################
+
+	# Single-click opens items
+	kwriteconfig6 --file kdeglobals --group "KDE" --key "SingleClick" true
+
+	# Dolphin startup location and behavior
+	kwriteconfig6 --file dolphinrc --group "General" --key "HomeUrl" "file:///home/$USER"
+	kwriteconfig6 --file dolphinrc --group "General" --key "RememberOpenedTabs" false
+	kwriteconfig6 --file dolphinrc --group "General" --key "ShowHomeUrlOnStartup" true
+
+	# Screen locking behavior
+	#kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock true
+	#kwriteconfig6 --file kscreenlockerrc --group Daemon --key Timeout 5  # minutes
+	kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false
+	kwriteconfig6 --file kscreenlockerrc --group Daemon --key Timeout 0 # minutes
+
+	# Power Management: AC profile configuration
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key UseProfileSpecificDisplayBrightness true
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key DisplayBrightness 45
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key DimDisplayIdleTimeoutSec 300
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key DimDisplayWhenIdle true
+	# kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key DimDisplayIdleTimeoutSec -1
+	# kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key DimDisplayWhenIdle false
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key TurnOffDisplayIdleTimeoutSec 600
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key TurnOffDisplayWhenIdle true
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key TurnOffDisplayIdleTimeoutWhenLockedSec 0
+
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "SuspendAndShutdown" --key AutoSuspendAction 0
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "SuspendAndShutdown" --key AutoSuspendIdleTimeoutSec 60
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "SuspendAndShutdown" --key PowerButtonAction 0
+	kwriteconfig6 --file powerdevilrc --group "AC" --group "SuspendAndShutdown" --key LidAction 0
+
+	qdbus6 org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement refreshStatus 2>/dev/null || true
 }
 
 # Function to install Kubuntu desktop
@@ -598,7 +659,8 @@ install_apt_apps() {
 	### 🐧 System Utilities
 	system_utils=(
 		unzip dos2unix flatpak fwupd geany gparted gpart
-		htop rpi-imager mtools subversion lm-sensors
+		htop mtools subversion lm-sensors
+		#rpi-imager #qt5 🤔 apt rdepends --installed libqt5core5t64
 	)
 	### 💾 File System & Disk Tools
 	fs_disk_tools=(
@@ -641,6 +703,7 @@ install_apt_apps() {
 	### 🛠 Miscellaneous / Special Purpose
 	misc_tools=(
 		rpi-imager python-is-python3
+		ffmpeg
 		#synaptic
 		#dotnet-sdk-9.0
 	)
@@ -1063,6 +1126,35 @@ iptables_secure() {
 
 }
 
+lock_out() {
+
+	qdbus6 org.freedesktop.ScreenSaver /ScreenSaver Lock
+}
+
+qt5check() {
+
+	# check_qt_stack.sh — verifies that your KDE/Plasma environment is running entirely on Qt 6
+	# It scans loaded libraries, installed packages, and key processes for any Qt 5 remnants.
+
+	echo "=== Checking active Qt libraries ==="
+	sudo lsof -n | grep '/libqt' | grep -v snap | sort -u
+
+	echo -e "\n=== Checking installed KDE/Qt package versions ==="
+	dpkg -l | grep -E 'libqt6|libkf6|plasma|kwin|kio' | awk '{print $2, $3}' | column -t | sort
+
+	echo -e "\n=== Checking runtime processes for Qt version ==="
+	ps -e | grep -E 'plasmashell|kwin|systemsettings|dolphin' |
+		awk '{print $4}' | xargs -r ldd 2>/dev/null | grep -E 'libQt' | sort -u
+
+}
+
+#lsblk -o NAME,MODEL,SIZE,ROTA
+#sudo dmidecode -t memory
+#sudo dmidecode -s system-product-name
+#sudo lspci | grep -i network
+#sudo lshw -C network
+#nmcli dev wifi list
+
 ################################################################################
 ######       MENUs
 ################################################################################
@@ -1180,6 +1272,16 @@ main_menu() {
 		18)
 			echo "Exiting."
 			exit 0
+			;;
+		22)
+			kde_settings
+			;;
+		66)
+			lock_out
+			;;
+		qt)
+			#secret qt check
+			qt5check
 			;;
 		*)
 			echo "Invalid option. Please try again."
