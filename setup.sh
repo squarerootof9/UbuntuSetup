@@ -702,7 +702,7 @@ install_apt_apps() {
 
 	### 🛠 Miscellaneous / Special Purpose
 	misc_tools=(
-		rpi-imager python-is-python3
+		python-is-python3
 		ffmpeg
 		#synaptic
 		#dotnet-sdk-9.0
