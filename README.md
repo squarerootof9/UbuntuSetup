@@ -111,9 +111,9 @@ chmod +x setup.sh
 4. **Interact With the Menu**:
 
 ```
---------------------------------------------
-Ubuntu Setup Menu
---------------------------------------------
+╭──────────────────────────────────────────╮
+│             Ubuntu Setup Menu            │
+╰──────────────────────────────────────────╯
 Core Application Setup
 1) System Applications
 2) Snap Applications
@@ -128,10 +128,10 @@ Development Tools
 9) Add Node.js®
 10) Install Homebrew
 
-Desktop Environments
-11) Install Plasma Desktop
-12) Install Kubuntu Desktop
-13) Remove Kubuntu Desktop
+Desktop Environment
+11) Install Plasma/KDE Desktop
+12) Add Plasma/KDE Settings
+13) Install SDDM Desktop Manager
 
 System Configuration
 14) Set Up SSH Server
@@ -141,12 +141,16 @@ System Maintenance
 16) Full Applications and System Update(s)
 17) Operating System Upgrade
 
-18) Exit
+Backports PPA Repository
+18) Add Repository
+19) Remove Repository
 
-Please select an option [1-18]:
+20) Exit
+
+Please select an option [1-20]:
 ```
 
-Each option walks you through the selected action. You can run the script multiple times to change or add components.
+You can run the script multiple times to change or add components.
 
 ---
 
