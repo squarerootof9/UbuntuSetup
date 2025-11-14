@@ -191,7 +191,7 @@ manage_java_old() {
 
 	if $JAVA_INSTALLED; then
 		echo "Java is currently installed."
-		read -p "Do you want to remove Java? (y/N): " REMOVE_JAVA
+		read -p "Do you want to remove Java? [y/N]: " REMOVE_JAVA
 		if [[ "$REMOVE_JAVA" =~ ^[Yy]$ ]]; then
 			remove_java
 		else
@@ -199,7 +199,7 @@ manage_java_old() {
 		fi
 	else
 		echo "Java is not installed."
-		read -p "Do you want to install Java? (y/N): " INSTALL_JAVA
+		read -p "Do you want to install Java? [y/N]: " INSTALL_JAVA
 		if [[ "$INSTALL_JAVA" =~ ^[Yy]$ ]]; then
 			install_homebrew
 			install_homebrew_java
@@ -312,6 +312,8 @@ install_kde_plasma_desktop() {
 
 	#https://packages.debian.org/bookworm/kde/
 
+	#sudo apt install --no-install-recommends kmail kleopatra kaddressbook
+
 	base_desktop=(
 		# Core Plasma shell and settings
 		kde-plasma-desktop
@@ -420,8 +422,53 @@ install_kde_plasma_desktop() {
 		kcalc
 		kcharselect
 		kamera
+		krecorder
 		print-manager
 	)
+
+	ankonadi=(
+		akonadi-server
+		akonadi-backend-mysql
+	)
+
+	kde_pim=(
+		#Core apps:
+		kalarm
+		#Core framework:
+		kdepim
+		kdepim-runtime
+		#Extra features:
+		kdepim-addons
+		accountwizard
+		libkdepim-plugins
+		kdepim-themeeditors
+
+		#Merkuro Suite:
+		merkuro
+		qml6-module-org-kde-kirigamiaddons-settings
+		qml6-module-qtlocation
+	)
+
+	kde_pim_old=(
+		#Core apps:
+		kontact
+		kmail
+		korganizer
+		kaddressbook
+		kalarm
+		klevernotes
+		#Core framework:
+		kdepim
+		kdepim-runtime
+		#Extra features:
+		kdepim-addons
+		accountwizard
+		libkdepim-plugins
+		kdepim-themeeditors
+	)
+
+	#sudo apt install -y kaccounts-integration kaccounts-providers kio-gdrive nextcloud-desktop owncloud-client telepathy-mission-control-5 plasma-vault
+	#kdenetwork-filesharing
 
 	all_packages=(
 		"${base_desktop[@]}"
@@ -432,14 +479,14 @@ install_kde_plasma_desktop() {
 
 	install_apps "${all_packages[@]}"
 
-	install_sddm
+	#install_sddm
 
 }
 
 install_sddm() {
 
 	# Prompt for sddm
-	read -p "Do you want to install sddm? (y/N): " INSTALL_SDDM
+	read -p "Do you want to install sddm? [y/N]: " INSTALL_SDDM
 	if [[ "$INSTALL_SDDM" =~ ^[Yy]$ ]]; then
 
 		sddm=(
@@ -525,7 +572,7 @@ install_kde_desktop() {
 	#aptitude install kdeadmin kdegraphics kdemultimedia kdenetwork kdepim kdeutils kdeaccessibility kdesdk kdewebdev
 
 	# Prompt for Kubuntu desktop installation
-	read -p "Do you want to install the Full KDE desktop environment? (y/N): " INSTALL_KDE
+	read -p "Do you want to install the Full KDE desktop environment? [y/N]: " INSTALL_KDE
 	if [[ "$INSTALL_KDE" =~ ^[Yy]$ ]]; then
 
 		echo "Installing Kubuntu desktop environment..."
@@ -540,7 +587,7 @@ install_kde_desktop() {
 
 # Function to remove Kubuntu desktop
 remove_kde_desktop() {
-	read -p "Do you want to remove the Full KDE desktop environment? (y/N): " REMOVE_KDE
+	read -p "Do you want to remove the Full KDE desktop environment? [y/N]: " REMOVE_KDE
 	if [[ "$REMOVE_KDE" =~ ^[Yy]$ ]]; then
 		echo "Removing Kubuntu desktop environment..."
 		sudo apt purge -y kubuntu-desktop
@@ -554,7 +601,7 @@ remove_kde_desktop() {
 
 # Function to reboot system
 reboot_system() {
-	read -p "The system will need to reboot to complete the installation/removal of Kubuntu desktop. Reboot now? (y/N): " REBOOT
+	read -p "The system will need to reboot to complete the installation/removal of Kubuntu desktop. Reboot now? [y/N]: " REBOOT
 	if [[ "$REBOOT" =~ ^[Yy]$ ]]; then
 		sudo reboot
 	else
@@ -604,18 +651,17 @@ update_upgrade() {
 
 update_system() {
 
-	echo "The upgrade process may reboot or exit this script."
-	echo "Continue? (y/N)"
-	read -r ans
-	[[ "$ans" =~ ^[Yy]$ ]] && exec sudo do-release-upgrade
+	read -p "Check for system upgrade now? [y/N]: " UPGRADE
+	if [[ "$UPGRADE" =~ ^[Yy]$ ]]; then
+		#( sudo do-release-upgrade )
+		echo "The upgrade process may reboot or exit this script."
+		echo "Continue? [y/N]"
+		read -r ans
+		[[ "$ans" =~ ^[Yy]$ ]] && exec sudo do-release-upgrade
+	else
+		echo "Skipping system update."
+	fi
 
-	#read -p "Check for system upgrade now? (y/N): " UPGRADE
-	#if [[ "$UPGRADE" =~ ^[Yy]$ ]]; then
-	#echo "Follow the on-screen prompts during the upgrade process. This may involve downloading new packages, making decisions about configurations, and potentially a system reboot."
-	#sudo do-release-upgrade
-	#else
-	#echo "Skipping system update."
-	#fi
 }
 
 install_apps() {
@@ -673,7 +719,7 @@ install_apt_apps() {
 	### 🖥️ Multimedia / GUI / OBS
 	gui_apps=(
 		#libwebkit2gtk-4.1-dev \
-		mpv obs-studio
+		obs-studio audacity vlc
 	)
 	### 📱 Mobile / Flash / Embedded
 	embedded_tools=(
@@ -743,7 +789,7 @@ install_snap_apps() {
 	echo "Installing snap packages with classic confinement..."
 	sudo snap install android-studio --classic
 	sudo snap install blender --classic
-	sudo snap install code --classic
+	#sudo snap install code --classic
 	sudo snap install codium --classic
 	sudo snap install intellij-idea-ultimate --classic
 }
@@ -833,12 +879,10 @@ install_appimages() {
 	local options="${1:-}"
 
 	APPIMAGE_URLS=(
-		"https://github.com/audacity/audacity/releases/download/Audacity-3.7.5/audacity-linux-3.7.5-x64-22.04.AppImage"
 		"https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
 		"https://github.com/OpenShot/openshot-qt/releases/download/v3.3.0/OpenShot-v3.3.0-x86_64.AppImage"
 	)
 	APP_NAMES=(
-		"Audacity"
 		"OrcaSlicer"
 		"OpenShot Video Editor"
 	)
@@ -1148,6 +1192,175 @@ qt5check() {
 
 }
 
+################################################################################
+######       MENUs
+################################################################################
+
+# Text attributes
+BOLD='\033[1m'
+DIM='\033[2m'
+ITALIC='\033[3m'      # Not supported in all terminals
+UNDERLINE='\033[4m'
+INVERT='\033[7m'
+
+# Reset (clears *all* attributes)
+RESET='\033[0m'
+
+# Colors (foreground)
+RED='\033[31m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+BLUE='\033[34m'
+MAGENTA='\033[35m'
+CYAN='\033[36m'
+WHITE='\033[37m'
+
+# Colors (bright)
+BRIGHT_RED='\033[91m'
+BRIGHT_GREEN='\033[92m'
+BRIGHT_YELLOW='\033[93m'
+BRIGHT_BLUE='\033[94m'
+BRIGHT_MAGENTA='\033[95m'
+BRIGHT_CYAN='\033[96m'
+BRIGHT_WHITE='\033[97m'
+
+
+confirm() {
+	# Usage: confirm "message" || return 1
+	echo -en "${CYAN}$1${RESET} ${YELLOW}[Y/n]${RESET}: "
+	read -r ans
+	case "${ans,,}" in
+	y | yes | "") return 0 ;;
+	*)
+		echo -e "${RED}✗ Operation cancelled.${RESET}\n"
+		return 1
+		;;
+	esac
+}
+
+repository_add() {
+	echo ""
+	confirm "Add the Kubuntu Backports PPA?" || return 1
+
+	echo -e "\n${CYAN}➜ Adding Kubuntu Backports PPA…${RESET}"
+	echo -e "${YELLOW}  (Official Kubuntu repo providing newer KDE Plasma packages)${RESET}\n"
+
+	sudo add-apt-repository -y ppa:kubuntu-ppa/backports
+	sudo apt update
+
+	echo -e "\n${GREEN}✓ Kubuntu Backports PPA added successfully.${RESET}\n"
+}
+
+repository_remove() {
+	echo ""
+	confirm "Remove the Kubuntu Backports PPA?" || return 1
+
+	echo -e "\n${CYAN}➜ Removing Kubuntu Backports PPA…${RESET}"
+	echo -e "${YELLOW}  (Returning to standard Ubuntu KDE packages)${RESET}\n"
+
+	sudo add-apt-repository -y --remove ppa:kubuntu-ppa/backports
+	sudo apt update
+
+	echo -e "\n${GREEN}✓ Kubuntu Backports PPA removed successfully.${RESET}\n"
+}
+
+visualstudio_add() {
+
+	echo -e "\n${CYAN}➜ Adding Microsoft VS Code repository…${RESET}"
+
+	# Import GPG key (modern method)
+	curl -fsSL https://packages.microsoft.com/keys/microsoft.asc |
+		sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
+
+	# Add repository file
+
+	#Legacy .list format
+	#echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] \
+	#https://packages.microsoft.com/repos/code stable main" |
+	#sudo tee /etc/apt/sources.list.d/vscode.list >/dev/null
+
+	#Modern Deb822 format (multi-line key: value style)
+	sudo tee /etc/apt/sources.list.d/vscode.sources >/dev/null <<'EOF'
+Types: deb
+URIs: https://packages.microsoft.com/repos/code
+Suites: stable
+Components: main
+Architectures: amd64
+Signed-By: /usr/share/keyrings/microsoft.gpg
+EOF
+
+	sudo apt update
+	sudo apt install -y code
+
+	echo -e "\n${GREEN}✓ VS Code installed successfully.${RESET}\n"
+}
+
+visualstudio_remove() {
+
+	echo -e "\n${CYAN}➜ Removing Microsoft VS Code and repository…${RESET}"
+
+	sudo apt purge -y code
+	sudo apt autoremove -y
+
+	sudo rm -f /usr/share/keyrings/microsoft.gpg
+	sudo rm -f /etc/apt/sources.list.d/vscode.*
+	sudo apt update
+
+	echo -e "\n${GREEN}✓ VS Code and repository removed.${RESET}\n"
+}
+
+firefox_add() {
+
+	echo "Firefox"
+
+	read -p "Do you want to upgrade to Firefox ESR? [y/N]: " UPGRADE_FIREFOX
+	if [[ "$UPGRADE_FIREFOX" =~ ^[Yy]$ ]]; then
+
+		echo -e "\n${CYAN}➜ Removing Previous Mozilla Firefox…${RESET}"
+
+		sudo snap remove firefox
+		sudo apt purge -y firefox
+		sudo apt autoremove -y
+
+		echo -e "\n${CYAN}➜ Adding Mozilla Firefox ESR repository…${RESET}"
+
+		sudo add-apt-repository -y ppa:mozillateam/ppa
+
+		# Prevent Snap Firefox from stealing priority
+		echo -e "${YELLOW}➜ Setting APT priority to prefer deb over snap…${RESET}"
+		sudo tee /etc/apt/preferences.d/mozillateam.pref >/dev/null <<'EOF'
+Package: firefox*
+Pin: release o=LP-PPA-mozillateam
+Pin-Priority: 1001
+EOF
+		echo -e "\n${CYAN}➜ Updating apt…${RESET}"
+		sudo apt update
+
+		echo -e "\n${CYAN}➜ Installing firefox-esr…${RESET}"
+		sudo apt install -y firefox-esr
+
+		echo -e "\n${GREEN}✓ Firefox ESR installed successfully.${RESET}\n"
+
+	fi
+
+}
+
+firefox_remove() {
+	echo -e "\n${CYAN}➜ Removing Firefox ESR and Mozilla repository…${RESET}"
+
+	sudo apt purge -y firefox-esr
+	sudo apt autoremove -y
+
+	sudo rm -f /etc/apt/preferences.d/mozillateam.pref
+	sudo add-apt-repository -y --remove ppa:mozillateam/ppa
+
+	sudo apt update
+
+	echo -e "\n${GREEN}✓ Firefox ESR and repository removed.${RESET}\n"
+}
+
+#apt rdepends --installed libqt5core5t64
+
 #lsblk -o NAME,MODEL,SIZE,ROTA
 #sudo dmidecode -t memory
 #sudo dmidecode -s system-product-name
@@ -1165,12 +1378,6 @@ main_menu() {
 	while true; do
 
 		clear
-		# Define color variables
-		RED='\033[0;31m'
-		GREEN='\033[0;32m'
-		YELLOW='\033[1;33m'
-		CYAN='\033[0;36m'
-		NC='\033[0m' # No Color
 
 		SEC_TOP=""
 		#SEC_TOP="--------------------------------------------"
@@ -1178,10 +1385,10 @@ main_menu() {
 		SEC_BOT=""
 		#SEC_BOT="--------------------------------------------"
 
-		echo "--------------------------------------------"
-		echo -e "${CYAN}Ubuntu Setup Menu${NC}"
-		echo "--------------------------------------------"
-		echo -e "${YELLOW}Core Application Setup${NC}"
+		echo "╭──────────────────────────────────────────╮"
+		echo -e "│             ${BOLD}${CYAN}Ubuntu Setup Menu${RESET}            │"
+		echo "╰──────────────────────────────────────────╯"
+		echo -e "${YELLOW}Core Application Setup${RESET}"
 		echo "1) System Applications"
 		echo "2) Snap Applications"
 		echo "3) Deb Packages"
@@ -1189,28 +1396,34 @@ main_menu() {
 		echo "5) All Applications (1,2,3,4)"
 		echo "6) Balena-Etcher"
 		echo $SEC_BOT
-		echo -e "${YELLOW}Development Tools${NC}"
+		echo -e "${YELLOW}Development Tools${RESET}"
 		echo "7) Development Utilities (make, etc...)"
 		echo "8) Add/Remove Java"
 		echo "9) Add Node.js®"
 		echo "10) Install Homebrew"
 		echo $SEC_BOT
-		echo -e "${YELLOW}Desktop Environments${NC}"
-		echo "11) Install Plasma Desktop"
-		echo "12) Install Kubuntu Desktop"
-		echo "13) Remove Kubuntu Desktop"
+		echo -e "${YELLOW}Desktop Environment${RESET}"
+		echo "11) Install Plasma/KDE Desktop"
+		echo "12) Add Plasma/KDE Settings"
+		echo "13) Install SDDM Desktop Manager"
+		#echo "12) Install Kubuntu Desktop"
+		#echo "13) Remove Kubuntu Desktop"
 		echo $SEC_BOT
-		echo -e "${YELLOW}System Configuration${NC}"
+		echo -e "${YELLOW}System Configuration${RESET}"
 		echo "14) Set Up SSH Server"
 		echo "15) Firewall / IPTables Setup"
 		echo $SEC_BOT
-		echo -e "${YELLOW}System Maintenance${NC}"
+		echo -e "${YELLOW}System Maintenance${RESET}"
 		echo "16) Full Applications and System Update(s)"
 		echo "17) Operating System Upgrade"
 		echo $SEC_BOT
-		echo -e "${RED}18) Exit${NC}"
+		echo -e "${YELLOW}Backports PPA Repository${RESET}"
+		echo "18) Add Repository "
+		echo "19) Remove Repository"
+		echo $SEC_BOT
+		echo -e "${RED}20) Exit${RESET}"
 		echo ""
-		read -rp "Please select an option [1-18]: " choice
+		read -rp "Please select an option [1-20]: " choice
 
 		case $choice in
 		1)
@@ -1249,11 +1462,13 @@ main_menu() {
 			;;
 		12)
 			# Add Kubuntu Desktop
-			install_kde_desktop
+			#install_kde_desktop
+			kde_settings
 			;;
 		13)
 			# Remove Kubuntu Desktop
-			remove_kde_desktop
+			#remove_kde_desktop
+			install_sddm
 			;;
 		14)
 			# Set Up SSH
@@ -1270,18 +1485,34 @@ main_menu() {
 			update_system
 			;;
 		18)
+			repository_add
+			;;
+		19)
+			repository_remove
+			;;
+		20)
 			echo "Exiting."
 			exit 0
 			;;
-		22)
-			kde_settings
-			;;
 		66)
+			#lock current desktop session remotely
 			lock_out
 			;;
 		qt)
 			#secret qt check
 			qt5check
+			;;
+		vs)
+			visualstudio_add
+			;;
+		vsremove)
+			visualstudio_remove
+			;;
+		ff)
+			firefox_add
+			;;
+		ffremove)
+			firefox_remove
 			;;
 		*)
 			echo "Invalid option. Please try again."
