@@ -103,14 +103,14 @@ install_homebrew() {
 	brew update && brew upgrade && brew cleanup
 
 	# Install applications via Homebrew
-	brew install cocoapods
-	brew install arduino-cli
-	brew install esptool
+	#brew install cocoapods
+	#brew install arduino-cli
+	#brew install esptool
 	#brew install node@23
 
 	# Set up CocoaPods
-	echo "Setting up CocoaPods..."
-	pod setup
+	#echo "Setting up CocoaPods..."
+	#pod setup
 }
 
 # Function to install Java
@@ -670,12 +670,13 @@ install_apps() {
 	sudo apt install --no-install-recommends "${packages[@]}"
 }
 
+#remove
 install_applications_all() {
 
-	install_apt_apps -s
-	install_snap_apps -s
-	install_deb_packages -s
-	install_appimages -s
+	install_apt_apps
+	install_snap_apps
+	install_deb_packages
+	install_appimages
 
 	echo ""
 	echo "✅ Full Setup Finished"
@@ -849,10 +850,12 @@ install_deb_packages() {
 
 	local options="${1:-}"
 
-	DEB_URLS=(
-		"https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
-		"https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
-	)
+	DEB_URLS=$options
+
+	#DEB_URLS=(
+	#"https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+	#"https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
+	#)
 	DOWNLOAD_DIR="$HOME/Downloads"
 
 	echo "Downloading and installing .deb packages..."
@@ -1199,7 +1202,7 @@ qt5check() {
 # Text attributes
 BOLD='\033[1m'
 DIM='\033[2m'
-ITALIC='\033[3m'      # Not supported in all terminals
+ITALIC='\033[3m' # Not supported in all terminals
 UNDERLINE='\033[4m'
 INVERT='\033[7m'
 
@@ -1223,7 +1226,6 @@ BRIGHT_BLUE='\033[94m'
 BRIGHT_MAGENTA='\033[95m'
 BRIGHT_CYAN='\033[96m'
 BRIGHT_WHITE='\033[97m'
-
 
 confirm() {
 	# Usage: confirm "message" || return 1
@@ -1391,26 +1393,26 @@ main_menu() {
 		echo -e "${YELLOW}Core Application Setup${RESET}"
 		echo "1) System Applications"
 		echo "2) Snap Applications"
-		echo "3) Deb Packages"
-		echo "4) App Images"
-		echo "5) All Applications (1,2,3,4)"
-		echo "6) Balena-Etcher"
+		echo "3) App Images"
+		echo "4) Install Balena-Etcher"
+		echo "5) Install Veracypt"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Development Tools${RESET}"
-		echo "7) Development Utilities (make, etc...)"
-		echo "8) Add/Remove Java"
-		echo "9) Add Node.js®"
-		echo "10) Install Homebrew"
+		echo "6) Development Utilities (make, etc...)"
+		echo "7) Add/Remove Java"
+		echo "8) Add Node.js®"
+		echo "9) Install Homebrew"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Desktop Environment${RESET}"
-		echo "11) Install Plasma/KDE Desktop"
-		echo "12) Add Plasma/KDE Settings"
-		echo "13) Install SDDM Desktop Manager"
+		echo "10) Install Plasma/KDE Desktop"
+		echo "11) Add Plasma/KDE Settings"
+		echo "12) Install SDDM Desktop Manager"
 		#echo "12) Install Kubuntu Desktop"
 		#echo "13) Remove Kubuntu Desktop"
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Configuration${RESET}"
-		echo "14) Set Up SSH Server"
+		echo "13) Set Up SSH Server"
+		echo "14) Install Repetier Server"
 		echo "15) Firewall / IPTables Setup"
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Maintenance${RESET}"
@@ -1433,46 +1435,46 @@ main_menu() {
 			install_snap_apps
 			;;
 		3)
-			install_deb_packages
-			;;
-		4)
 			install_appimages
 			;;
-		5)
-			install_applications_all
-			;;
-		6)
+		4)
 			install_etcher_portable
 			;;
-		7)
+		5)
+			install_deb_packages "https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
+			;;
+		6)
 			install_development
 			;;
-		8)
+		7)
 			manage_java
 			;;
-		9)
+		8)
 			install_nodejs
 			;;
-		10)
+		9)
 			# Install Homebrew
 			install_homebrew
 			;;
-		11)
+		10)
 			install_kde_plasma_desktop
 			;;
-		12)
+		11)
 			# Add Kubuntu Desktop
 			#install_kde_desktop
 			kde_settings
 			;;
-		13)
+		12)
 			# Remove Kubuntu Desktop
 			#remove_kde_desktop
 			install_sddm
 			;;
-		14)
+		13)
 			# Set Up SSH
 			setup_ssh
+			;;
+		14)
+			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 			;;
 		15)
 			iptables_secure

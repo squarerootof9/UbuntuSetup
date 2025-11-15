@@ -1,4 +1,5 @@
 arduino
+rpi-imager
 btop
 cups
 musikcube
