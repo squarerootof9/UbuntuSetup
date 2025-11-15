@@ -117,24 +117,24 @@ chmod +x setup.sh
 Core Application Setup
 1) System Applications
 2) Snap Applications
-3) Deb Packages
-4) App Images
-5) All Applications (1,2,3,4)
-6) Balena-Etcher
+3) App Images
+4) Install Balena-Etcher
+5) Install Veracypt
 
 Development Tools
-7) Development Utilities (make, etc...)
-8) Add/Remove Java
-9) Add Node.js®
-10) Install Homebrew
+6) Development Utilities (make, etc...)
+7) Add/Remove Java
+8) Add Node.js®
+9) Install Homebrew
 
 Desktop Environment
-11) Install Plasma/KDE Desktop
-12) Add Plasma/KDE Settings
-13) Install SDDM Desktop Manager
+10) Install Plasma/KDE Desktop
+11) Add Plasma/KDE Settings
+12) Install SDDM Desktop Manager
 
 System Configuration
-14) Set Up SSH Server
+13) Set Up SSH Server
+14) Install Repetier Server
 15) Firewall / IPTables Setup
 
 System Maintenance
