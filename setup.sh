@@ -876,6 +876,40 @@ install_deb_packages() {
 	echo ".deb packages installation complete."
 }
 
+app_install() {
+	local appimage="$1"
+	local workdir="squashfs-root"
+	local icon_dir="/usr/share/pixmaps"
+	local desktop_dir="$HOME/.local/share/applications"
+
+	# sanity checks
+	if [[ -z "$appimage" || ! -f "$appimage" ]]; then
+		echo "Error: AppImage not found: $appimage"
+		return 1
+	fi
+
+	mkdir -p "$icon_dir" "$desktop_dir"
+
+	# Extract
+	"$appimage" --appimage-extract >/dev/null 2>&1
+	if [[ ! -d "$workdir" ]]; then
+		echo "Error: extraction failed."
+		return 1
+	fi
+
+	# Copy icons
+	find "$workdir" -maxdepth 1 -name "*.svg" -exec cp {} "$icon_dir/" \;
+
+	# Copy desktop files
+	find "$workdir" -maxdepth 1 -name "*.desktop" -exec cp {} "$desktop_dir/" \;
+
+	# Clean up
+	rm -rf "$workdir"
+
+	echo "✓ Installed icons → $icon_dir"
+	echo "✓ Installed desktop files → $desktop_dir"
+}
+
 # Function to install AppImages
 install_appimages() {
 
@@ -909,20 +943,36 @@ install_appimages() {
 		# Check if the AppImage already exists at the final location
 		if [ -f "$target_path" ]; then
 			echo "$filename already exists in $APPIMAGE_DIR. Skipping download."
+
 		else
+
 			echo "Downloading $filename..."
 			wget --progress=bar:force -O "$filepath" "$url"
-			chmod +x "$filepath"
-			mv "$filepath" "$target_path"
-			echo "Moved $filename to $APPIMAGE_DIR."
+
 		fi
 
-		# Create .desktop file
-		desktop_file="$HOME/.local/share/applications/${filename%.AppImage}.desktop"
-		if [ ! -f "$desktop_file" ]; then
-			echo "Creating desktop entry for $app_name..."
-			mkdir -p "$(dirname "$desktop_file")"
-			cat >"$desktop_file" <<EOL
+		chmod +x "$filepath"
+
+		##
+		app_install "$filepath"
+
+		##
+		mv "$filepath" "$target_path"
+		echo "Moved $filename to $APPIMAGE_DIR."
+
+	done
+
+	echo "AppImage packages installation complete."
+}
+
+old() {
+
+	# Create .desktop file
+	desktop_file="$HOME/.local/share/applications/${filename%.AppImage}.desktop"
+	if [ ! -f "$desktop_file" ]; then
+		echo "Creating desktop entry for $app_name..."
+		mkdir -p "$(dirname "$desktop_file")"
+		cat >"$desktop_file" <<EOL
 [Desktop Entry]
 Name=$app_name
 Exec=$target_path
@@ -931,13 +981,30 @@ Type=Application
 Categories=AudioVideo;Audio;Video;Editor;
 Terminal=false
 EOL
-			echo "Desktop entry created at $desktop_file."
-		else
-			echo "Desktop entry for $app_name already exists. Skipping."
-		fi
-	done
+		echo "Desktop entry created at $desktop_file."
+	else
+		echo "Desktop entry for $app_name already exists. Skipping."
+	fi
 
-	echo "AppImage packages installation complete."
+}
+
+install_cups() {
+
+	echo "Installing CUPS..."
+	sudo apt install -y cups cups-filters printer-driver-all
+	sudo systemctl enable --now cups
+
+	read -p "Do you want to support AirPrint or network discovery? [y/N]: " NETDIS
+	if [[ "$NETDIS" =~ ^[Yy]$ ]]; then
+		sudo apt install -y avahi-daemon
+		sudo systemctl enable --now avahi-daemon
+	else
+		echo "Skipping network discovery setup."
+
+	fi
+
+	echo "Finished installation."
+
 }
 
 iptables_save() {
@@ -1412,20 +1479,21 @@ main_menu() {
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Configuration${RESET}"
 		echo "13) Set Up SSH Server"
-		echo "14) Install Repetier Server"
-		echo "15) Firewall / IPTables Setup"
+		echo "14) Install Cups Printing"
+		echo "15) Install Repetier Server"
+		echo "16) Firewall / IPTables Setup"
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Maintenance${RESET}"
-		echo "16) Full Applications and System Update(s)"
-		echo "17) Operating System Upgrade"
+		echo "17) Full Applications and System Update(s)"
+		echo "18) Operating System Upgrade"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Backports PPA Repository${RESET}"
-		echo "18) Add Repository "
-		echo "19) Remove Repository"
+		echo "19) Add Repository "
+		echo "20) Remove Repository"
 		echo $SEC_BOT
-		echo -e "${RED}20) Exit${RESET}"
+		echo -e "${RED}21) Exit${RESET}"
 		echo ""
-		read -rp "Please select an option [1-20]: " choice
+		read -rp "Please select an option [1-21]: " choice
 
 		case $choice in
 		1)
@@ -1474,25 +1542,28 @@ main_menu() {
 			setup_ssh
 			;;
 		14)
-			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+			install_cups
 			;;
 		15)
-			iptables_secure
+			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 			;;
 		16)
+			iptables_secure
+			;;
+		17)
 			# Helper function for updating and upgrading the system
 			update_upgrade
 			;;
-		17)
+		18)
 			update_system
 			;;
-		18)
+		19)
 			repository_add
 			;;
-		19)
+		20)
 			repository_remove
 			;;
-		20)
+		21)
 			echo "Exiting."
 			exit 0
 			;;

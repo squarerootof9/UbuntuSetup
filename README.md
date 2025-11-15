@@ -134,20 +134,21 @@ Desktop Environment
 
 System Configuration
 13) Set Up SSH Server
-14) Install Repetier Server
-15) Firewall / IPTables Setup
+14) Install Cups Printing
+15) Install Repetier Server
+16) Firewall / IPTables Setup
 
 System Maintenance
-16) Full Applications and System Update(s)
-17) Operating System Upgrade
+17) Full Applications and System Update(s)
+18) Operating System Upgrade
 
 Backports PPA Repository
-18) Add Repository
-19) Remove Repository
+19) Add Repository
+20) Remove Repository
 
-20) Exit
+21) Exit
 
-Please select an option [1-20]:
+Please select an option [1-21]:
 ```
 
 You can run the script multiple times to change or add components.
