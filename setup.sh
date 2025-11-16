@@ -847,7 +847,7 @@ Categories=Utility;
 EOF
 
 	#clean up zip
-	rm "$archive"
+	#rm "$archive"
 
 	echo "✅ Etcher installed. Run with: balena-etcher"
 }
