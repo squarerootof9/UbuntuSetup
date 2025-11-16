@@ -823,6 +823,10 @@ install_etcher_portable() {
 		return 1
 	}
 
+	# Get Icon
+	wget -O balenaEtcher.png https://raw.githubusercontent.com/balena-io/etcher/master/assets/icon.png
+	sudo mv balenaEtcher.png /usr/share/pixmaps/
+
 	# Fix sandbox permissions
 	chmod +x balena-etcher
 	sudo chown root:root chrome-sandbox
@@ -838,9 +842,12 @@ install_etcher_portable() {
 Type=Application
 Name=Balena Etcher
 Exec=/usr/local/bin/balena-etcher
-Icon=media-removable
+Icon=balenaEtcher.png
 Categories=Utility;
 EOF
+
+	#clean up zip
+	rm "$archive"
 
 	echo "✅ Etcher installed. Run with: balena-etcher"
 }
