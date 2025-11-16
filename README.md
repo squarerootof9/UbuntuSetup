@@ -117,26 +117,28 @@ chmod +x setup.sh
 Core Application Setup
 1) System Applications
 2) Snap Applications
-3) App Images
-4) Install Balena-Etcher
-5) Install Veracypt
+3) Install Balena-Etcher
+4) Install Veracypt
 
 Development Tools
-6) Development Utilities (make, etc...)
-7) Add/Remove Java
-8) Add Node.js®
-9) Install Homebrew
+5) Development Utilities (make, etc...)
+6) Add/Remove Java
+7) Add Node.js®
+8) Install Homebrew
 
 Desktop Environment
-10) Install Plasma/KDE Desktop
-11) Add Plasma/KDE Settings
-12) Install SDDM Desktop Manager
+9) Install Plasma/KDE Desktop
+10) Add Plasma/KDE Settings
+11) Install SDDM Desktop Manager
 
 System Configuration
-13) Set Up SSH Server
-14) Install Cups Printing
-15) Install Repetier Server
-16) Firewall / IPTables Setup
+12) Set Up SSH Server
+13) Install Cups Printing
+14) Firewall / IPTables Setup
+
+3d Printing
+15) Install OrcaSlicer
+16) Install Repetier Server
 
 System Maintenance
 17) Full Applications and System Update(s)

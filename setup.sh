@@ -856,6 +856,7 @@ install_deb_packages() {
 	#"https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 	#"https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
 	#)
+
 	DOWNLOAD_DIR="$HOME/Downloads"
 
 	echo "Downloading and installing .deb packages..."
@@ -878,6 +879,7 @@ install_deb_packages() {
 
 app_install() {
 	local appimage="$1"
+	local target="$2"
 	local workdir="squashfs-root"
 	local icon_dir="/usr/share/pixmaps"
 	local desktop_dir="$HOME/.local/share/applications"
@@ -898,10 +900,18 @@ app_install() {
 	fi
 
 	# Copy icons
-	find "$workdir" -maxdepth 1 -name "*.svg" -exec cp {} "$icon_dir/" \;
+	sudo find "$workdir" -maxdepth 1 \( -name "*.svg" -o -name "*.png" \) -exec cp {} "$icon_dir/" \;
+
+	#find "$workdir" -maxdepth 1 -regextype posix-extended \
+	#-regex ".*/.*\.(svg|png)$" \
+	#-exec cp {} "$icon_dir/" \;
 
 	# Copy desktop files
-	find "$workdir" -maxdepth 1 -name "*.desktop" -exec cp {} "$desktop_dir/" \;
+	desktop_file=$(basename "$workdir"/*.desktop)
+
+	sed -i "s|^Exec=.*|Exec=$target|" "$workdir/$desktop_file"
+
+	sudo find "$workdir" -maxdepth 1 -name "*.desktop" -exec cp {} "$desktop_dir/" \;
 
 	# Clean up
 	rm -rf "$workdir"
@@ -915,14 +925,18 @@ install_appimages() {
 
 	local options="${1:-}"
 
-	APPIMAGE_URLS=(
-		"https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
-		"https://github.com/OpenShot/openshot-qt/releases/download/v3.3.0/OpenShot-v3.3.0-x86_64.AppImage"
-	)
-	APP_NAMES=(
-		"OrcaSlicer"
-		"OpenShot Video Editor"
-	)
+	APPIMAGE_URLS=$options
+
+	#APPIMAGE_URLS=(
+	#"https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
+	#"https://github.com/OpenShot/openshot-qt/releases/download/v3.3.0/OpenShot-v3.3.0-x86_64.AppImage"
+	#)
+
+	#APP_NAMES=(
+	#"OrcaSlicer"
+	#"OpenShot Video Editor"
+	#)
+
 	DOWNLOAD_DIR="$HOME/Downloads"
 	APPIMAGE_DIR="$HOME/AppImages"
 
@@ -930,12 +944,13 @@ install_appimages() {
 
 	# Create APPIMAGE_DIR if it doesn't exist
 	if [ ! -d "$APPIMAGE_DIR" ]; then
+		echo "Making App Image Directory"
 		mkdir -p "$APPIMAGE_DIR"
 	fi
 
 	for index in "${!APPIMAGE_URLS[@]}"; do
 		url="${APPIMAGE_URLS[$index]}"
-		app_name="${APP_NAMES[$index]}"
+		#app_name="${APP_NAMES[$index]}"
 		filename=$(basename "$url")
 		filepath="$DOWNLOAD_DIR/$filename"
 		target_path="$APPIMAGE_DIR/$filename"
@@ -943,22 +958,19 @@ install_appimages() {
 		# Check if the AppImage already exists at the final location
 		if [ -f "$target_path" ]; then
 			echo "$filename already exists in $APPIMAGE_DIR. Skipping download."
-
 		else
-
 			echo "Downloading $filename..."
 			wget --progress=bar:force -O "$filepath" "$url"
 
+			chmod +x "$filepath"
+
+			##
+			app_install "$filepath" "$target_path"
+
+			##
+			mv "$filepath" "$target_path"
+			echo "Moved $filename to $APPIMAGE_DIR."
 		fi
-
-		chmod +x "$filepath"
-
-		##
-		app_install "$filepath"
-
-		##
-		mv "$filepath" "$target_path"
-		echo "Moved $filename to $APPIMAGE_DIR."
 
 	done
 
@@ -1460,28 +1472,30 @@ main_menu() {
 		echo -e "${YELLOW}Core Application Setup${RESET}"
 		echo "1) System Applications"
 		echo "2) Snap Applications"
-		echo "3) App Images"
-		echo "4) Install Balena-Etcher"
-		echo "5) Install Veracypt"
+		echo "3) Install Balena-Etcher"
+		echo "4) Install Veracypt"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Development Tools${RESET}"
-		echo "6) Development Utilities (make, etc...)"
-		echo "7) Add/Remove Java"
-		echo "8) Add Node.js®"
-		echo "9) Install Homebrew"
+		echo "5) Development Utilities (make, etc...)"
+		echo "6) Add/Remove Java"
+		echo "7) Add Node.js®"
+		echo "8) Install Homebrew"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Desktop Environment${RESET}"
-		echo "10) Install Plasma/KDE Desktop"
-		echo "11) Add Plasma/KDE Settings"
-		echo "12) Install SDDM Desktop Manager"
+		echo "9) Install Plasma/KDE Desktop"
+		echo "10) Add Plasma/KDE Settings"
+		echo "11) Install SDDM Desktop Manager"
 		#echo "12) Install Kubuntu Desktop"
 		#echo "13) Remove Kubuntu Desktop"
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Configuration${RESET}"
-		echo "13) Set Up SSH Server"
-		echo "14) Install Cups Printing"
-		echo "15) Install Repetier Server"
-		echo "16) Firewall / IPTables Setup"
+		echo "12) Set Up SSH Server"
+		echo "13) Install Cups Printing"
+		echo "14) Firewall / IPTables Setup"
+		echo $SEC_BOT
+		echo -e "${YELLOW}3d Printing${RESET}"
+		echo "15) Install OrcaSlicer"
+		echo "16) Install Repetier Server"
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Maintenance${RESET}"
 		echo "17) Full Applications and System Update(s)"
@@ -1503,52 +1517,52 @@ main_menu() {
 			install_snap_apps
 			;;
 		3)
-			install_appimages
-			;;
-		4)
 			install_etcher_portable
 			;;
-		5)
+		4)
 			install_deb_packages "https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
 			;;
-		6)
+		5)
 			install_development
 			;;
-		7)
+		6)
 			manage_java
 			;;
-		8)
+		7)
 			install_nodejs
 			;;
-		9)
+		8)
 			# Install Homebrew
 			install_homebrew
 			;;
-		10)
+		9)
 			install_kde_plasma_desktop
 			;;
-		11)
+		10)
 			# Add Kubuntu Desktop
 			#install_kde_desktop
 			kde_settings
 			;;
-		12)
+		11)
 			# Remove Kubuntu Desktop
 			#remove_kde_desktop
 			install_sddm
 			;;
-		13)
+		12)
 			# Set Up SSH
 			setup_ssh
 			;;
-		14)
+		13)
 			install_cups
 			;;
+		14)
+			iptables_secure
+			;;
 		15)
-			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
 			;;
 		16)
-			iptables_secure
+			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 			;;
 		17)
 			# Helper function for updating and upgrading the system
