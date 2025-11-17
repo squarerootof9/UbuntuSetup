@@ -124,7 +124,7 @@ Development Tools
 5) Development Applications
 6) Add/Remove Java
 7) Add/Remove Node.js®
-8) Install Homebrew
+8) Add/Remove Homebrew
 
 Desktop Environment
 9) Install Plasma/KDE Desktop

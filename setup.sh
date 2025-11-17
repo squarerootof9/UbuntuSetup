@@ -78,6 +78,11 @@ install_homebrew() {
 		# Run the Homebrew installation script
 		/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
+		#tmp_log="/tmp/brew_install.log"
+
+		#/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)" \
+		#	>"$tmp_log" 2>&1
+
 		# Add Homebrew to the PATH in .bashrc
 		if ! grep -qxF '# Homebrew configuration' "$HOME/.bashrc"; then
 			{
@@ -110,6 +115,62 @@ install_homebrew() {
 	# Set up CocoaPods
 	#echo "Setting up CocoaPods..."
 	#pod setup
+
+	echo ""
+	echo "Homebrew installed."
+	echo ""
+	echo "######################################"
+	echo "Restart your session to finish install"
+	echo "######################################"
+	echo ""
+
+}
+
+remove_homebrew() {
+	echo "Removing Homebrew…"
+
+	# Default Linux prefix
+	BREW_PREFIX="/home/linuxbrew/.linuxbrew"
+
+	# Fallback if installed in user’s home (rare, but possible)
+	if [ ! -d "$BREW_PREFIX" ]; then
+		if [ -d "$HOME/.linuxbrew" ]; then
+			BREW_PREFIX="$HOME/.linuxbrew"
+		fi
+	fi
+
+	if [ ! -d "$BREW_PREFIX" ]; then
+		echo "Homebrew is not installed."
+		return 0
+	fi
+
+	echo "Found Homebrew at: $BREW_PREFIX"
+
+	# Remove the directory
+	sudo rm -rf "$BREW_PREFIX"
+
+	# Remove environment entries from shell configs
+	# These usually appear in .bashrc / .zshrc
+	for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+		if [ -f "$rc" ]; then
+			sed -i '/linuxbrew/d' "$rc"
+			sed -i '/Homebrew/d' "$rc"
+			sed -i '/brew shellenv/d' "$rc"
+		fi
+	done
+
+	# Clean up symlinks placed in /usr/local/bin (optional safety)
+	if [ -d "/usr/local/bin" ]; then
+		find /usr/local/bin -lname "$BREW_PREFIX/*" -exec sudo rm -f {} \;
+	fi
+
+	echo ""
+	echo "Homebrew removed."
+	echo ""
+	echo "######################################"
+	echo "Restart your session to finish removal"
+	echo "######################################"
+	echo ""
 }
 
 # Function to install Java
@@ -156,7 +217,7 @@ install_homebrew_java() {
 # Function to remove Java
 remove_java() {
 
-	sudo apt purge -y openjdk*
+	sudo apt purge openjdk*
 
 	if $JAVA_INSTALLED; then
 		echo "Removing Java..."
@@ -180,86 +241,6 @@ remove_java() {
 	else
 		echo "Java is not installed."
 	fi
-}
-
-##REMOVE
-manage_java_old() {
-	echo "--------------------------------------------"
-	echo "Java Management"
-	echo "--------------------------------------------"
-
-	if $JAVA_INSTALLED; then
-		echo "Java is currently installed."
-		read -p "Do you want to remove Java? [y/N]: " REMOVE_JAVA
-		if [[ "$REMOVE_JAVA" =~ ^[Yy]$ ]]; then
-			remove_java
-		else
-			echo "Java will not be removed."
-		fi
-	else
-		echo "Java is not installed."
-		read -p "Do you want to install Java? [y/N]: " INSTALL_JAVA
-		if [[ "$INSTALL_JAVA" =~ ^[Yy]$ ]]; then
-			install_homebrew
-			install_homebrew_java
-		else
-			echo "Java will not be installed."
-		fi
-	fi
-}
-
-manage_java() {
-
-	clear
-	echo "--------------------------------------------"
-	echo "Java Management"
-	echo "--------------------------------------------"
-	echo "Select the Java version to install:"
-	echo ""
-	echo "1) default-jre"
-	echo "2) openjdk-8-jre-headless"
-	echo "3) openjdk-11-jre-headless"
-	echo "4) openjdk-17-jre-headless"
-	echo "5) openjdk-21-jre-headless"
-	echo "6) openjdk-22-jre-headless"
-	echo "7) openjdk-23-jre-headless"
-	echo "8) openjdk-24-jre-headless"
-	#echo "9) Homebrew Java (openjdk)"
-	echo ""
-	echo "r) Remove Java"
-	echo "q) Quit"
-	echo
-
-	read -p "Enter your choice: " java_choice
-
-	case "$java_choice" in
-	1) sudo apt install -y default-jre ;;
-	2) sudo apt install -y openjdk-8-jre-headless ;;
-	3) sudo apt install -y openjdk-11-jre-headless ;;
-	4) sudo apt install -y openjdk-17-jre-headless ;;
-	5) sudo apt install -y openjdk-21-jre-headless ;;
-	6) sudo apt install -y openjdk-22-jre-headless ;;
-	7) sudo apt install -y openjdk-23-jre-headless ;;
-	8) sudo apt install -y openjdk-24-jre-headless ;;
-	99)
-		echo "Installing Java via Homebrew."
-		install_homebrew
-		install_homebrew_java
-		;;
-	r | R)
-		remove_java
-		;;
-	q | Q)
-		echo "Aborted Java management."
-		#main_menu
-		;;
-	*)
-		echo "Invalid choice. No action taken."
-		;;
-	esac
-
-	pause
-	main_menu
 }
 
 ################################################################################
@@ -690,6 +671,11 @@ update_upgrade() {
 	if command -v flatpak &>/dev/null; then
 		echo "📦 Updating Flatpak packages..."
 		flatpak update -y
+	fi
+
+	if command -v brew &>/dev/null; then
+		echo "📦 Updating Brew packages..."
+		brew update && brew upgrade && brew cleanup
 	fi
 
 	echo ""
@@ -1544,6 +1530,60 @@ androidstudio_remove() {
 ######       MENUs
 ################################################################################
 
+manage_java() {
+
+	while true; do
+
+		clear
+
+		echo "╭──────────────────────────────────────────╮"
+		echo -e "│             ${BOLD}${CYAN}Java Management${RESET}              │"
+		echo "╰──────────────────────────────────────────╯"
+		echo -e "${YELLOW}Select the Java version to install:${RESET}"
+		echo "1) default-jre"
+		echo "2) openjdk-8-jre-headless"
+		echo "3) openjdk-11-jre-headless"
+		echo "4) openjdk-17-jre-headless"
+		echo "5) openjdk-21-jre-headless"
+		echo "6) openjdk-22-jre-headless"
+		echo "7) openjdk-23-jre-headless"
+		echo "8) openjdk-24-jre-headless"
+		#echo "9) Homebrew Java (openjdk)"
+		echo ""
+		echo "r) Remove Java"
+		echo "q) 🔙 Back to Main Menu"
+		echo
+
+		read -p "Enter your choice: " java_choice
+
+		case "$java_choice" in
+		1) sudo apt install default-jre ;;
+		2) sudo apt install openjdk-8-jre-headless ;;
+		3) sudo apt install openjdk-11-jre-headless ;;
+		4) sudo apt install openjdk-17-jre-headless ;;
+		5) sudo apt install openjdk-21-jre-headless ;;
+		6) sudo apt install openjdk-22-jre-headless ;;
+		7) sudo apt install openjdk-23-jre-headless ;;
+		8) sudo apt install openjdk-24-jre-headless ;;
+		99)
+			echo "Installing Java via Homebrew."
+			install_homebrew
+			install_homebrew_java
+			;;
+		r | R)
+			remove_java
+			;;
+		q | Q)
+			main_menu
+			;;
+		*)
+			echo "Invalid option. Please try again."
+			;;
+		esac
+		pause
+	done
+}
+
 nodejs_menu() {
 
 	while true; do
@@ -1551,7 +1591,7 @@ nodejs_menu() {
 		clear
 
 		echo "╭──────────────────────────────────────────╮"
-		echo -e "│         ${BOLD}${CYAN}Node.JS® Menu${RESET}       │"
+		echo -e "│               ${BOLD}${CYAN}Node.JS® Menu${RESET}              │"
 		echo "╰──────────────────────────────────────────╯"
 		echo -e "${YELLOW}Node.JS® Setup${RESET}"
 		echo "1) Install Node.JS®"
@@ -1566,6 +1606,41 @@ nodejs_menu() {
 			;;
 		2)
 			remove_nodejs
+			;;
+		3)
+			main_menu
+			;;
+		*)
+			echo "Invalid option. Please try again."
+			;;
+		esac
+		pause
+	done
+
+}
+
+hb_menu() {
+
+	while true; do
+
+		clear
+
+		echo "╭──────────────────────────────────────────╮"
+		echo -e "│               ${BOLD}${CYAN}Homebrew Menu${RESET}              │"
+		echo "╰──────────────────────────────────────────╯"
+		echo -e "${YELLOW}Homebrew Setup${RESET}"
+		echo "1) Install Homebrew"
+		echo "2) Remove Homebrew"
+		echo "3) 🔙 Back to Main Menu"
+		echo ""
+		read -rp "Please select an option [1-3]: " choice
+
+		case $choice in
+		1)
+			install_homebrew
+			;;
+		2)
+			remove_homebrew
 			;;
 		3)
 			main_menu
@@ -1648,7 +1723,7 @@ main_menu() {
 		echo "5) Development Applications"
 		echo "6) Add/Remove Java"
 		echo "7) Add/Remove Node.js®"
-		echo "8) Install Homebrew"
+		echo "8) Add/Remove Homebrew"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Desktop Environment${RESET}"
 		echo "9) Install Plasma/KDE Desktop"
@@ -1701,8 +1776,7 @@ main_menu() {
 			nodejs_menu
 			;;
 		8)
-			# Install Homebrew
-			install_homebrew
+			hb_menu
 			;;
 		9)
 			install_kde_plasma_desktop
@@ -1769,6 +1843,9 @@ main_menu() {
 			;;
 		ffremove)
 			firefox_remove
+			;;
+		hbr)
+			remove_homebrew
 			;;
 		*)
 			echo "Invalid option. Please try again."
