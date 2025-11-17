@@ -125,32 +125,33 @@ Development Tools
 6) Add/Remove Java
 7) Add/Remove Node.js®
 8) Add/Remove Homebrew
+9) Add/Remove Flatpak
 
 Desktop Environment
-9) Install Plasma/KDE Desktop
-10) Add Plasma/KDE Settings
-11) Install SDDM Desktop Manager
+10) Install Plasma/KDE Desktop
+11) Add Plasma/KDE Settings
+12) Install SDDM Desktop Manager
 
 System Configuration
-12) Set Up SSH Server
-13) Install Cups Printing
-14) Firewall / IPTables Setup
+13) Set Up SSH Server
+14) Install Cups Printing
+15) Firewall / IPTables Setup
 
 3d Printing
-15) Install OrcaSlicer
-16) Install Repetier Server
+16) Install OrcaSlicer
+17) Install Repetier Server
 
 System Maintenance
-17) Full Applications and System Update(s)
-18) Operating System Upgrade
+18) Full Applications and System Update(s)
+19) Operating System Upgrade
 
 Backports PPA Repository
-19) Add Repository
-20) Remove Repository
+20) Add Repository
+21) Remove Repository
 
-21) Exit
+22) Exit
 
-Please select an option [1-21]:
+Please select an option [1-22]:
 ```
 
 You can run the script multiple times to change or add components.

@@ -739,7 +739,7 @@ install_apt_apps() {
 	)
 	### 🐧 System Utilities
 	system_utils=(
-		unzip dos2unix flatpak fwupd geany gparted gpart
+		unzip dos2unix fwupd geany gparted gpart
 		htop mtools subversion lm-sensors
 		#rpi-imager #qt5 🤔 apt rdepends --installed libqt5core5t64
 	)
@@ -803,6 +803,7 @@ install_apt_apps() {
 	)
 
 	install_apps "${all_packages[@]}"
+
 }
 
 install_snap_apps() {
@@ -1490,31 +1491,49 @@ firefox_remove() {
 
 openshot_add() {
 
-	#flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 	#flatpak install flathub org.openshot.OpenShot
 
-	sudo add-apt-repository ppa:openshot.developers/ppa
-	sudo apt update
-	sudo apt install openshot-qt python3-openshot
+	echo -e "\n${CYAN}➜ Adding OpenShot Video Editor PPA and installing…${RESET}"
 
+	sudo add-apt-repository -y ppa:openshot.developers/ppa
+	sudo apt update
+	sudo apt install -y openshot-qt python3-openshot
+
+	echo -e "\n${GREEN}✓ OpenShot Video Editor installed successfully.${RESET}\n"
 }
 
 openshot_remove() {
+	echo -e "\n${CYAN}➜ Removing OpenShot Video Editor and its PPA…${RESET}"
+
+	sudo apt purge -y openshot-qt python3-openshot
+	sudo apt autoremove -y
 
 	sudo add-apt-repository -y --remove ppa:openshot.developers/ppa
 	sudo apt update
+
+	echo -e "\n${GREEN}✓ OpenShot Video Editor and PPA removed.${RESET}\n"
 }
 
 androidstudio_add() {
+	echo -e "\n${CYAN}➜ Adding Android Studio PPA and installing…${RESET}"
 
-	sudo add-apt-repository ppa:maarten-fonville/android-studio
+	sudo add-apt-repository -y ppa:maarten-fonville/android-studio
 	sudo apt update
-	sudo apt install android-studio
+	sudo apt install -y android-studio
+
+	echo -e "\n${GREEN}✓ Android Studio installed successfully.${RESET}\n"
 }
 
 androidstudio_remove() {
+	echo -e "\n${CYAN}➜ Removing Android Studio and its PPA…${RESET}"
+
+	sudo apt purge -y android-studio
+	sudo apt autoremove -y
+
 	sudo add-apt-repository -y --remove ppa:maarten-fonville/android-studio
 	sudo apt update
+
+	echo -e "\n${GREEN}✓ Android Studio and PPA removed.${RESET}\n"
 }
 
 #apt rdepends --installed libqt5core5t64
@@ -1654,6 +1673,47 @@ hb_menu() {
 
 }
 
+flatpak_menu() {
+
+	while true; do
+
+		clear
+
+		echo "╭──────────────────────────────────────────╮"
+		echo -e "│               ${BOLD}${CYAN}Flatpak Menu${RESET}               │"
+		echo "╰──────────────────────────────────────────╯"
+		echo -e "${YELLOW}Flatpak Setup${RESET}"
+		echo "1) Install Flatpak"
+		echo "2) Remove Flatpak"
+		echo "3) 🔙 Back to Main Menu"
+		echo ""
+		read -rp "Please select an option [1-3]: " choice
+
+		case $choice in
+		1)
+			echo -e "${CYAN}➜ Installing Flatpak…${RESET}"
+			sudo apt install flatpak
+			echo -e "${CYAN}➜ Adding Flathub remote repository…${RESET}"
+			flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+
+			;;
+		2)
+			echo -e "${CYAN}➜ Removing Flatpak…${RESET}"
+			sudo apt remove flatpak
+			sudo apt autoremove
+			;;
+		3)
+			main_menu
+			;;
+		*)
+			echo "Invalid option. Please try again."
+			;;
+		esac
+		pause
+	done
+
+}
+
 dev_menu() {
 
 	while true; do
@@ -1724,34 +1784,35 @@ main_menu() {
 		echo "6) Add/Remove Java"
 		echo "7) Add/Remove Node.js®"
 		echo "8) Add/Remove Homebrew"
+		echo "9) Add/Remove Flatpak"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Desktop Environment${RESET}"
-		echo "9) Install Plasma/KDE Desktop"
-		echo "10) Add Plasma/KDE Settings"
-		echo "11) Install SDDM Desktop Manager"
+		echo "10) Install Plasma/KDE Desktop"
+		echo "11) Add Plasma/KDE Settings"
+		echo "12) Install SDDM Desktop Manager"
 		#echo "12) Install Kubuntu Desktop"
 		#echo "13) Remove Kubuntu Desktop"
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Configuration${RESET}"
-		echo "12) Set Up SSH Server"
-		echo "13) Install Cups Printing"
-		echo "14) Firewall / IPTables Setup"
+		echo "13) Set Up SSH Server"
+		echo "14) Install Cups Printing"
+		echo "15) Firewall / IPTables Setup"
 		echo $SEC_BOT
 		echo -e "${YELLOW}3d Printing${RESET}"
-		echo "15) Install OrcaSlicer"
-		echo "16) Install Repetier Server"
+		echo "16) Install OrcaSlicer"
+		echo "17) Install Repetier Server"
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Maintenance${RESET}"
-		echo "17) Full Applications and System Update(s)"
-		echo "18) Operating System Upgrade"
+		echo "18) Full Applications and System Update(s)"
+		echo "19) Operating System Upgrade"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Backports PPA Repository${RESET}"
-		echo "19) Add Repository "
-		echo "20) Remove Repository"
+		echo "20) Add Repository "
+		echo "21) Remove Repository"
 		echo $SEC_BOT
-		echo -e "${RED}21) Exit${RESET}"
+		echo -e "${RED}22) Exit${RESET}"
 		echo ""
-		read -rp "Please select an option [1-21]: " choice
+		read -rp "Please select an option [1-22]: " choice
 
 		case $choice in
 		1)
@@ -1779,48 +1840,51 @@ main_menu() {
 			hb_menu
 			;;
 		9)
-			install_kde_plasma_desktop
+			flatpak_menu
 			;;
 		10)
+			install_kde_plasma_desktop
+			;;
+		11)
 			# Add Kubuntu Desktop
 			#install_kde_desktop
 			kde_settings
 			;;
-		11)
+		12)
 			# Remove Kubuntu Desktop
 			#remove_kde_desktop
 			install_sddm
 			;;
-		12)
+		13)
 			# Set Up SSH
 			setup_ssh
 			;;
-		13)
+		14)
 			install_cups
 			;;
-		14)
+		15)
 			iptables_secure
 			;;
-		15)
+		16)
 			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
 			;;
-		16)
+		17)
 			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 			;;
-		17)
+		18)
 			# Helper function for updating and upgrading the system
 			update_upgrade
 			;;
-		18)
+		19)
 			update_system
 			;;
-		19)
+		20)
 			repository_add
 			;;
-		20)
+		21)
 			repository_remove
 			;;
-		21)
+		22)
 			echo "Exiting."
 			exit 0
 			;;
