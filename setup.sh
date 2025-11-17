@@ -73,8 +73,7 @@ install_homebrew() {
 		echo "Installing Homebrew..."
 
 		# Install dependencies
-		sudo apt update
-		sudo apt install -y build-essential curl file git
+		sudo apt install -y curl
 
 		# Run the Homebrew installation script
 		/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -271,8 +270,8 @@ install_nodejs() {
 
 	local options="${1:-}"
 
-	#🌐 Networking & Downloads
-	sudo apt install -y --no-install-recommends curl
+	# Install dependencies
+	sudo apt install -y curl
 
 	##########
 	# Node.js
@@ -788,14 +787,18 @@ install_snap_apps() {
 
 	# Install snaps with classic confinement
 	echo "Installing snap packages with classic confinement..."
-	sudo snap install android-studio --classic
+	#sudo snap install android-studio --classic
 	sudo snap install blender --classic
 	#sudo snap install code --classic
-	sudo snap install codium --classic
-	sudo snap install intellij-idea-ultimate --classic
+	#sudo snap install codium --classic
+	#sudo snap install intellij-idea-ultimate --classic
 }
 
 install_etcher_portable() {
+
+	# Install dependencies
+	sudo apt install -y curl
+
 	echo "Installing Balena Etcher (portable)..."
 
 	local base_dir="$HOME/.local/share/balena-etcher"
@@ -1354,6 +1357,9 @@ repository_remove() {
 
 visualstudio_add() {
 
+	# Install dependencies
+	sudo apt install -y curl
+
 	echo -e "\n${CYAN}➜ Adding Microsoft VS Code repository…${RESET}"
 
 	# Import GPG key (modern method)
@@ -1447,6 +1453,32 @@ firefox_remove() {
 	echo -e "\n${GREEN}✓ Firefox ESR and repository removed.${RESET}\n"
 }
 
+openshot_add() {
+
+	sudo add-apt-repository ppa:openshot.developers/ppa
+	sudo apt update
+	sudo apt install openshot-qt python3-openshot
+
+}
+
+openshot_remove() {
+
+	sudo add-apt-repository -y --remove ppa:openshot.developers/ppa
+	sudo apt update
+}
+
+androidstudio_add() {
+
+	sudo add-apt-repository ppa:maarten-fonville/android-studio
+	sudo apt update
+	sudo apt install android-studio
+}
+
+androidstudio_remove() {
+	sudo add-apt-repository -y --remove ppa:maarten-fonville/android-studio
+	sudo apt update
+}
+
 #apt rdepends --installed libqt5core5t64
 
 #lsblk -o NAME,MODEL,SIZE,ROTA
@@ -1460,6 +1492,49 @@ firefox_remove() {
 ######       MENUs
 ################################################################################
 
+dev_menu() {
+
+	while true; do
+
+		clear
+
+		echo "╭──────────────────────────────────────────╮"
+		echo -e "│         ${BOLD}${CYAN}Development Utilities Menu${RESET}       │"
+		echo "╰──────────────────────────────────────────╯"
+		echo -e "${YELLOW}Core Application Setup${RESET}"
+		echo "1) Development Utilities (make, etc...)"
+		echo "2) Android Studio"
+		echo "3) Visual Studio"
+		echo "4) IntelliJ IDEA"
+		echo "5) 🔙 Back to Main Menu"
+		echo ""
+		read -rp "Please select an option [1-5]: " choice
+
+		case $choice in
+		1)
+			install_development
+			;;
+		2)
+			androidstudio_add
+			;;
+		3)
+			visualstudio_add
+			#sudo snap install codium --classic
+			;;
+		4)
+			sudo snap install intellij-idea-ultimate --classic
+			;;
+		5)
+			main_menu
+			;;
+		*)
+			echo "Invalid option. Please try again."
+			;;
+		esac
+		pause
+	done
+
+}
 # Main Menu
 main_menu() {
 
@@ -1483,7 +1558,7 @@ main_menu() {
 		echo "4) Install Veracypt"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Development Tools${RESET}"
-		echo "5) Development Utilities (make, etc...)"
+		echo "5) Development Applications"
 		echo "6) Add/Remove Java"
 		echo "7) Add Node.js®"
 		echo "8) Install Homebrew"
@@ -1530,7 +1605,7 @@ main_menu() {
 			install_deb_packages "https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
 			;;
 		5)
-			install_development
+			dev_menu
 			;;
 		6)
 			manage_java
