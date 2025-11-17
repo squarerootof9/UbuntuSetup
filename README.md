@@ -121,9 +121,9 @@ Core Application Setup
 4) Install Veracypt
 
 Development Tools
-5) Development Utilities (make, etc...)
+5) Development Applications
 6) Add/Remove Java
-7) Add Node.js®
+7) Add/Remove Node.js®
 8) Install Homebrew
 
 Desktop Environment
