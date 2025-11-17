@@ -356,7 +356,6 @@ install_kde_plasma_desktop() {
 		qml6-module-org-kde-kdeconnect
 		kde-config-screenlocker
 		kde-config-gtk-style
-		#qt5-gtk-platformtheme #qt5 🤔 apt rdepends --installed libqt5core5t64
 		kde-config-plymouth
 		kde-config-sddm
 		kde-config-tablet
@@ -507,8 +506,6 @@ install_kde_plasma_desktop() {
 	)
 
 	install_apps "${all_packages[@]}"
-
-	#install_sddm
 
 }
 
@@ -808,11 +805,9 @@ install_snap_apps() {
 
 	# Install snaps with classic confinement
 	echo "Installing snap packages with classic confinement..."
-	#sudo snap install android-studio --classic
+
 	sudo snap install blender --classic
-	#sudo snap install code --classic
-	#sudo snap install codium --classic
-	#sudo snap install intellij-idea-ultimate --classic
+
 }
 
 install_etcher_portable() {
@@ -1006,29 +1001,6 @@ install_appimages() {
 	done
 
 	echo "AppImage packages installation complete."
-}
-
-old() {
-
-	# Create .desktop file
-	desktop_file="$HOME/.local/share/applications/${filename%.AppImage}.desktop"
-	if [ ! -f "$desktop_file" ]; then
-		echo "Creating desktop entry for $app_name..."
-		mkdir -p "$(dirname "$desktop_file")"
-		cat >"$desktop_file" <<EOL
-[Desktop Entry]
-Name=$app_name
-Exec=$target_path
-Icon=$target_path
-Type=Application
-Categories=AudioVideo;Audio;Video;Editor;
-Terminal=false
-EOL
-		echo "Desktop entry created at $desktop_file."
-	else
-		echo "Desktop entry for $app_name already exists. Skipping."
-	fi
-
 }
 
 install_cups() {
