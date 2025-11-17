@@ -263,7 +263,7 @@ manage_java() {
 }
 
 ################################################################################
-######                          Node.JS
+######                          Node.JS®
 ################################################################################
 
 install_nodejs() {
@@ -277,14 +277,17 @@ install_nodejs() {
 	# Node.js
 	##########
 	#https://www.jemrf.com/pages/how-to-install-nvm-and-node-js-on-raspberry-pi
-	echo "Installing Node.js..."
-	curl -o- https://raw.githubusercontent.com/creationix/nvm/v0.33.11/install.sh | bash
+	echo "Installing Node.js®..."
+	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
 	export NVM_DIR="$HOME/.nvm"
-	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+	[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"                   # This loads nvm
+	[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" # This loads nvm bash_completion
+
 	command -v nvm
 	nvm install stable
-	npm install -g npm@11.2.0
+	npm install -g npm@latest
 	node -v
+	npm -v
 
 	# Reinstall TileServer GL from source
 	# git clone https://github.com/maptiler/tileserver-gl.git
@@ -302,7 +305,50 @@ install_nodejs() {
 	#sudo apt install -y libvips libvips-dev build-essential
 
 	#sudo apt install -y --no-install-recommends nodejs
-	echo "Installation of Node.js complete..."
+	echo "Installation of Node.js® complete..."
+	echo ""
+	echo "####################################"
+	echo "Restart your session to use Node.js®"
+	echo "####################################"
+	echo ""
+}
+
+remove_nodejs() {
+	echo "Removing Node.js® (NVM install)..."
+
+	# 1) Remove NVM directory (safe if missing)
+	if [ -d "$HOME/.nvm" ]; then
+		echo " - Removing ~/.nvm"
+		rm -rf "$HOME/.nvm"
+	else
+		echo " - ~/.nvm already removed"
+	fi
+
+	# 2) Remove npm cache
+	if [ -d "$HOME/.npm" ]; then
+		echo " - Removing ~/.npm cache"
+		rm -rf "$HOME/.npm"
+	else
+		echo " - ~/.npm cache already removed"
+	fi
+
+	# 3) Remove NVM-related lines from ~/.bashrc
+	echo " - Cleaning up ~/.bashrc entries"
+
+	# Patterns to remove (quiet if absent)
+	sed -i '/export NVM_DIR=.*/d' "$HOME/.bashrc"
+	sed -i '\|nvm.sh|d' "$HOME/.bashrc"
+	sed -i '\|bash_completion.*nvm|d' "$HOME/.bashrc"
+
+	#only works in current shell
+	command -v nvm >/dev/null && nvm unload
+
+	echo "Node.js® (NVM) removed."
+	echo ""
+	echo "######################################"
+	echo "Restart your session to finish removal"
+	echo "######################################"
+	echo ""
 }
 
 install_kde_plasma_desktop() {
@@ -430,6 +476,9 @@ install_kde_plasma_desktop() {
 		akonadi-backend-mysql
 	)
 
+	# don't forget someday
+	#sudo apt install libreoffice
+
 	kde_pim=(
 		#Core apps:
 		kalarm
@@ -485,38 +534,38 @@ install_kde_plasma_desktop() {
 install_sddm() {
 
 	# Prompt for sddm
-	read -p "Do you want to install sddm? [y/N]: " INSTALL_SDDM
-	if [[ "$INSTALL_SDDM" =~ ^[Yy]$ ]]; then
+	#read -p "Do you want to install sddm? [y/N]: " INSTALL_SDDM
+	#if [[ "$INSTALL_SDDM" =~ ^[Yy]$ ]]; then
 
-		sddm=(
-			sddm
-			xserver-xorg-input-libinput
-			sddm-theme-breeze
-			#qt6-virtualkeyboard-plugin
-			#sddm-conf
-			#qt6-qtwayland
-		)
+	sddm=(
+		sddm
+		xserver-xorg-input-libinput
+		sddm-theme-breeze
+		#qt6-virtualkeyboard-plugin
+		#sddm-conf
+		#qt6-qtwayland
+	)
 
-		#old pre-libinput event driver
-		#xserver-xorg-input-evdev
-		#old touchpad driver (deprecated)
-		#xserver-xorg-input-synaptics
-		#pre-USB PS/2 mouse fallback
-		#xserver-xorg-input-mouse
-		#old XKB keyboard fallback
-		#xserver-xorg-input-keyboard
-		#meta-package that installs everything
-		#xserver-xorg-input-all
+	#old pre-libinput event driver
+	#xserver-xorg-input-evdev
+	#old touchpad driver (deprecated)
+	#xserver-xorg-input-synaptics
+	#pre-USB PS/2 mouse fallback
+	#xserver-xorg-input-mouse
+	#old XKB keyboard fallback
+	#xserver-xorg-input-keyboard
+	#meta-package that installs everything
+	#xserver-xorg-input-all
 
-		packages=(
-			"${sddm[@]}"
-		)
+	packages=(
+		"${sddm[@]}"
+	)
 
-		install_apps "${packages[@]}"
+	install_apps "${packages[@]}"
 
-	else
-		echo "Skipping sddm installation."
-	fi
+	#else
+	#echo "Skipping sddm installation."
+	#fi
 
 }
 
@@ -1455,6 +1504,9 @@ firefox_remove() {
 
 openshot_add() {
 
+	#flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+	#flatpak install flathub org.openshot.OpenShot
+
 	sudo add-apt-repository ppa:openshot.developers/ppa
 	sudo apt update
 	sudo apt install openshot-qt python3-openshot
@@ -1491,6 +1543,41 @@ androidstudio_remove() {
 ################################################################################
 ######       MENUs
 ################################################################################
+
+nodejs_menu() {
+
+	while true; do
+
+		clear
+
+		echo "╭──────────────────────────────────────────╮"
+		echo -e "│         ${BOLD}${CYAN}Node.JS® Menu${RESET}       │"
+		echo "╰──────────────────────────────────────────╯"
+		echo -e "${YELLOW}Node.JS® Setup${RESET}"
+		echo "1) Install Node.JS®"
+		echo "2) Remove Node.JS®"
+		echo "3) 🔙 Back to Main Menu"
+		echo ""
+		read -rp "Please select an option [1-3]: " choice
+
+		case $choice in
+		1)
+			install_nodejs
+			;;
+		2)
+			remove_nodejs
+			;;
+		3)
+			main_menu
+			;;
+		*)
+			echo "Invalid option. Please try again."
+			;;
+		esac
+		pause
+	done
+
+}
 
 dev_menu() {
 
@@ -1560,7 +1647,7 @@ main_menu() {
 		echo -e "${YELLOW}Development Tools${RESET}"
 		echo "5) Development Applications"
 		echo "6) Add/Remove Java"
-		echo "7) Add Node.js®"
+		echo "7) Add/Remove Node.js®"
 		echo "8) Install Homebrew"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Desktop Environment${RESET}"
@@ -1611,7 +1698,7 @@ main_menu() {
 			manage_java
 			;;
 		7)
-			install_nodejs
+			nodejs_menu
 			;;
 		8)
 			# Install Homebrew
