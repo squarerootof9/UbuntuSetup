@@ -73,7 +73,7 @@ install_homebrew() {
 		echo "Installing Homebrew..."
 
 		# Install dependencies
-		sudo apt install -y curl
+		sudo apt install -y curl git
 
 		# Run the Homebrew installation script
 		/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -252,7 +252,7 @@ install_nodejs() {
 	local options="${1:-}"
 
 	# Install dependencies
-	sudo apt install -y curl
+	sudo apt install -y curl git
 
 	##########
 	# Node.js
@@ -704,19 +704,6 @@ install_apps() {
 	sudo apt install --no-install-recommends "${packages[@]}"
 }
 
-#remove
-install_applications_all() {
-
-	install_apt_apps
-	install_snap_apps
-	install_deb_packages
-	install_appimages
-
-	echo ""
-	echo "✅ Full Setup Finished"
-	echo ""
-}
-
 install_apt_apps() {
 
 	local options="${1:-}"
@@ -732,7 +719,6 @@ install_apt_apps() {
 		bison
 		patch
 		#ant
-		python-is-python3
 		protobuf-compiler
 		ragel
 		lua5.4
@@ -740,7 +726,7 @@ install_apt_apps() {
 	### 🐧 System Utilities
 	system_utils=(
 		unzip dos2unix fwupd geany gparted gpart
-		htop mtools subversion lm-sensors
+		htop mtools lm-sensors
 		#rpi-imager #qt5 🤔 apt rdepends --installed libqt5core5t64
 	)
 	### 💾 File System & Disk Tools
@@ -753,7 +739,6 @@ install_apt_apps() {
 	)
 	### 🖥️ Multimedia / GUI / OBS
 	gui_apps=(
-		#libwebkit2gtk-4.1-dev \
 		obs-studio audacity vlc
 	)
 	### 📱 Mobile / Flash / Embedded
@@ -1790,8 +1775,6 @@ main_menu() {
 		echo "10) Install Plasma/KDE Desktop"
 		echo "11) Add Plasma/KDE Settings"
 		echo "12) Install SDDM Desktop Manager"
-		#echo "12) Install Kubuntu Desktop"
-		#echo "13) Remove Kubuntu Desktop"
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Configuration${RESET}"
 		echo "13) Set Up SSH Server"
@@ -1896,20 +1879,11 @@ main_menu() {
 			#secret qt check
 			qt5check
 			;;
-		vs)
-			visualstudio_add
-			;;
-		vsremove)
-			visualstudio_remove
-			;;
 		ff)
 			firefox_add
 			;;
 		ffremove)
 			firefox_remove
-			;;
-		hbr)
-			remove_homebrew
 			;;
 		*)
 			echo "Invalid option. Please try again."
