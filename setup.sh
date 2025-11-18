@@ -56,11 +56,15 @@ install_development() {
 
 	#libtool-bin # Different from libtool?
 
+	#flex bison ant	ragel lua5.4
+
 	sudo apt install --no-install-recommends \
 		make cmake ninja-build automake autoconf autopoint libtool g++ pkg-config swig \
 		doxygen graphviz libltdl-dev libcurl4-openssl-dev gettext intltool \
 		python3-setuptools python3-pip python3-wheel \
-		subversion git curl ccache dpkg-dev libc6-dev
+		subversion git curl ccache dpkg-dev libc6-dev \
+		libncurses-dev \
+		protobuf-compiler patch
 
 	echo ""
 	echo "✅ Build Essentials Installed"
@@ -338,8 +342,6 @@ install_kde_plasma_desktop() {
 
 	#https://packages.debian.org/bookworm/kde/
 
-	#sudo apt install --no-install-recommends kmail kleopatra kaddressbook
-
 	base_desktop=(
 		# Core Plasma shell and settings
 		kde-plasma-desktop
@@ -396,7 +398,7 @@ install_kde_plasma_desktop() {
 
 		# Appearance (themes, visuals)
 		plasma-theme-oxygen
-		plasma-workspace-wallpapers
+		#plasma-workspace-wallpapers (185M)
 		plasma-wallpapers-addons
 
 		#add this only after it's updated to qt6
@@ -458,6 +460,8 @@ install_kde_plasma_desktop() {
 
 	# don't forget someday
 	#sudo apt install libreoffice
+
+	#sudo apt install --no-install-recommends kmail accountwizard kleopatra #kaddressbook
 
 	kde_pim=(
 		#Core apps:
@@ -586,45 +590,6 @@ kde_settings() {
 	qdbus6 org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement refreshStatus 2>/dev/null || true
 }
 
-# Function to install Kubuntu desktop
-install_kde_desktop() {
-
-	#https://help.ubuntu.com/community/InstallingKDE
-
-	#kde-plasma-desktop -- Bare-minimum installation. Including basic utilities like a file manager, browser, and terminal emulator.
-	#kde-standard -- Everything in kde-plasma-desktop with a standard suit of system utilities (for example, calculator, email, media player, and advanced text editor)
-	#kde-full -- Everything in kde-standard with extra system utilities, games, and educational applications.
-
-	#aptitude install kdeadmin kdegraphics kdemultimedia kdenetwork kdepim kdeutils kdeaccessibility kdesdk kdewebdev
-
-	# Prompt for Kubuntu desktop installation
-	read -p "Do you want to install the Full KDE desktop environment? [y/N]: " INSTALL_KDE
-	if [[ "$INSTALL_KDE" =~ ^[Yy]$ ]]; then
-
-		echo "Installing Kubuntu desktop environment..."
-		sudo apt update
-		sudo apt install kubuntu-desktop
-		echo "Kubuntu desktop has been installed."
-		reboot_system
-	else
-		echo "Skipping Kubuntu desktop installation."
-	fi
-}
-
-# Function to remove Kubuntu desktop
-remove_kde_desktop() {
-	read -p "Do you want to remove the Full KDE desktop environment? [y/N]: " REMOVE_KDE
-	if [[ "$REMOVE_KDE" =~ ^[Yy]$ ]]; then
-		echo "Removing Kubuntu desktop environment..."
-		sudo apt purge -y kubuntu-desktop
-		sudo apt autoremove -y
-		echo "Kubuntu desktop has been removed."
-		reboot_system
-	else
-		echo "Skipping Kubuntu desktop installation."
-	fi
-}
-
 # Function to reboot system
 reboot_system() {
 	read -p "The system will need to reboot to complete the installation/removal of Kubuntu desktop. Reboot now? [y/N]: " REBOOT
@@ -710,16 +675,6 @@ install_apt_apps() {
 	# Update and upgrade apt packages
 	# update_upgrade
 
-	### 🧰 Development Tools
-	dev_tools=(
-		flex
-		bison
-		patch
-		#ant
-		protobuf-compiler
-		ragel
-		lua5.4
-	)
 	### 🐧 System Utilities
 	system_utils=(
 		unzip dos2unix fwupd geany gparted gpart
@@ -732,15 +687,29 @@ install_apt_apps() {
 	)
 	### 🔐 Security & Auth
 	security_tools=(
-		opensc pcscd fido2-tools yubico-piv-tool libpam-pkcs11 xca
+		opensc pcscd fido2-tools yubico-piv-tool libpam-pkcs11 xca wireguard
 	)
+
+	#mplayer-skin-blue breaks mplayer-skins install
+	sudo tee /etc/apt/preferences.d/blacklist-mplayer-skin-blue >/dev/null <<EOF
+Package: mplayer-skin-blue
+Pin: release *
+Pin-Priority: -1
+EOF
+
 	### 🖥️ Multimedia / GUI / OBS
 	gui_apps=(
-		obs-studio audacity vlc
+		obs-studio
+		audacity
+		mpv
+		mplayer mplayer-gui mencoder mplayer-skins #<-mplayer-skin-blue breaks install
+		ffmpeg
+		#vlc #qt5 🤔 apt rdepends --installed libqt5core5t64
+		#smplayer #qt5 🤔
 	)
 	### 📱 Mobile / Flash / Embedded
 	embedded_tools=(
-		adb binwalk
+		adb binwalk esptool
 	)
 	### 🌍 Web & Remote Tools
 	remote_tools=(
@@ -766,13 +735,11 @@ install_apt_apps() {
 	### 🛠 Miscellaneous / Special Purpose
 	misc_tools=(
 		python-is-python3
-		ffmpeg
 		#synaptic
 		#dotnet-sdk-9.0
 	)
 
 	all_packages=(
-		"${dev_tools[@]}"
 		"${system_utils[@]}"
 		"${fs_disk_tools[@]}"
 		"${security_tools[@]}"
@@ -1380,6 +1347,76 @@ EOF
 	sudo apt install -y code
 
 	echo -e "\n${GREEN}✓ VS Code installed successfully.${RESET}\n"
+
+	visualstudio_stealth
+}
+
+visualstudio_stealth() {
+
+	CONFIG_DIR="${HOME}/.config/Code/User"
+	SETTINGS="${CONFIG_DIR}/settings.json"
+
+	echo "➜ Applying VS Code privacy/telemetry settings for user: $USER"
+
+	mkdir -p "$CONFIG_DIR"
+
+	if [[ -f "$SETTINGS" ]]; then
+		backup="${SETTINGS}.bak.$(date +%Y%m%d-%H%M%S)"
+		echo "  - Existing settings.json found, backing up to:"
+		echo "    $backup"
+		cp "$SETTINGS" "$backup"
+	else
+		echo "  - No existing settings.json, creating a new one"
+	fi
+
+	python3 - "$SETTINGS" <<'EOF'
+import json, os, sys
+
+path = sys.argv[1]
+
+# Load existing settings if valid JSON, otherwise start fresh
+data = {}
+if os.path.exists(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        # Corrupt or non-JSON file: keep it backed up, start clean overrides
+        data = {}
+
+overrides = {
+    # Telemetry / crash reporting
+    "telemetry.telemetryLevel": "off",
+    "telemetry.enableTelemetry": False,
+    "telemetry.enableCrashReporter": False,
+
+    # Experiments / remote feature toggles
+    "workbench.enableExperiments": False,
+
+    # Updates / background chatter
+    "update.mode": "none",
+    "update.enableWindowsBackgroundUpdates": False,
+    "update.enableLinuxBackgroundUpdates": False,
+    "update.showReleaseNotes": False,
+
+    # Extensions: no auto-recommendations / auto-updates
+    "extensions.autoUpdate": False,
+    "extensions.autoCheckUpdates": False,
+    "extensions.gallery.autoCheckUpdates": False,
+    "extensions.gallery.autoUpdate": False,
+    "extensions.ignoreRecommendations": True,
+    "extensions.showRecommendationsOnlyOnDemand": True,
+}
+
+data.update(overrides)
+
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=4, sort_keys=True)
+    f.write("\n")
+EOF
+
+	echo "✓ VS Code privacy settings applied."
+
 }
 
 visualstudio_remove() {
@@ -1764,10 +1801,11 @@ main_menu() {
 		echo -e "${YELLOW}Backports PPA Repository${RESET}"
 		echo "20) Add Repository "
 		echo "21) Remove Repository"
+		echo "22) Add Firefox-ESR"
 		echo $SEC_BOT
-		echo -e "${RED}22) Exit${RESET}"
+		echo -e "${RED}23) Exit${RESET}"
 		echo ""
-		read -rp "Please select an option [1-22]: " choice
+		read -rp "Please select an option [1-23]: " choice
 
 		case $choice in
 		1)
@@ -1840,6 +1878,9 @@ main_menu() {
 			repository_remove
 			;;
 		22)
+			firefox_add
+			;;
+		23)
 			echo "Exiting."
 			exit 0
 			;;
@@ -1850,9 +1891,6 @@ main_menu() {
 		qt)
 			#secret qt check
 			qt5check
-			;;
-		ff)
-			firefox_add
 			;;
 		ffremove)
 			firefox_remove
