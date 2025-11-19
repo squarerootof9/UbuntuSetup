@@ -253,8 +253,6 @@ remove_java() {
 
 install_nodejs() {
 
-	local options="${1:-}"
-
 	# Install dependencies
 	sudo apt install -y curl git
 
@@ -480,23 +478,32 @@ install_kde_plasma_desktop() {
 
 	install_apps "${all_packages[@]}"
 
+	echo "🚀 Applying first-boot Plasma theme settings..."
+	kde_firstboot
+	echo "✨ First-boot configuration complete."
+
 }
 
 install_sddm() {
 
-	# Prompt for sddm
-	#read -p "Do you want to install sddm? [y/N]: " INSTALL_SDDM
-	#if [[ "$INSTALL_SDDM" =~ ^[Yy]$ ]]; then
-
 	sddm=(
 		sddm
-		xserver-xorg-input-libinput
 		sddm-theme-breeze
-		#qt6-virtualkeyboard-plugin
+		## Mostly used by LXQt / XFCE users; KDE already provides its own SDDM settings.
 		#sddm-conf
-		#qt6-qtwayland
 	)
 
+	echo ""
+	read -p "⌨️  Install virtual keyboard support? [y/N]: " INSTALL_VK
+	if [[ "$INSTALL_VK" =~ ^[Yy]$ ]]; then
+		echo "✔ Adding virtual keyboard support..."
+		sddm_pkgs+=("qt6-virtualkeyboard-plugin")
+	else
+		echo "⏭️  Skipping virtual keyboard."
+	fi
+	echo ""
+	echo "🚀 Installing SDDM..."
+	echo ""
 	#old pre-libinput event driver
 	#xserver-xorg-input-evdev
 	#old touchpad driver (deprecated)
@@ -508,15 +515,7 @@ install_sddm() {
 	#meta-package that installs everything
 	#xserver-xorg-input-all
 
-	packages=(
-		"${sddm[@]}"
-	)
-
-	install_apps "${packages[@]}"
-
-	#else
-	#echo "Skipping sddm installation."
-	#fi
+	install_apps "${sddm[@]}"
 
 }
 
@@ -525,6 +524,8 @@ kde_settings() {
 	################################
 	# Configure Plasma/Dolphin/KDE #
 	################################
+
+	echo "Configuring Plasma/Dolphin/KDE..."
 
 	# Single-click opens items
 	kwriteconfig6 --file kdeglobals --group "KDE" --key "SingleClick" true
@@ -557,6 +558,50 @@ kde_settings() {
 	kwriteconfig6 --file powerdevilrc --group "AC" --group "SuspendAndShutdown" --key LidAction 0
 
 	qdbus6 org.kde.Solid.PowerManagement /org/kde/Solid/PowerManagement refreshStatus 2>/dev/null || true
+
+	echo "✔ Finished adding settings."
+
+}
+
+kde_firstboot() {
+
+	mkdir -p ~/.config/autostart
+	cat <<EOF >~/.config/autostart/plasma-firstboot.desktop
+[Desktop Entry]
+Type=Application
+Exec=/usr/local/bin/plasma-firstboot.sh
+Hidden=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+Name=Plasma First Boot Config
+EOF
+
+	sudo tee /usr/local/bin/plasma-firstboot.sh >/dev/null <<'EOF'
+#!/bin/bash
+
+# --- APPLY FIRST-BOOT SETTINGS ---
+# Global Breeze Dark theme
+lookandfeeltool -a org.kde.breezedark.desktop
+
+# Single-click
+kwriteconfig6 --file kdeglobals --group "KDE" --key "SingleClick" true
+
+# Add any additional first-run Plasma tweaks here…
+# Example:
+# kwriteconfig6 --file kdeglobals --group "General" --key "ColorScheme" "BreezeDark"
+
+# --- CLEANUP ---
+# Remove autostart entry so this only runs once
+rm -f ~/.config/autostart/plasma-firstboot.desktop
+
+# Remove this script if you prefer to keep the system clean
+# Comment this line out if you want to re-run or debug later:
+rm -f /usr/local/bin/plasma-firstboot.sh
+
+EOF
+
+	sudo chmod +x /usr/local/bin/plasma-firstboot.sh
+
 }
 
 # Function to reboot system
@@ -724,7 +769,7 @@ EOF
 
 }
 
-install_snap_apps() {
+install_snap_apps_old() {
 
 	local options="${1:-}"
 
@@ -739,11 +784,33 @@ install_snap_apps() {
 		echo "snap_list.txt not found in $SCRIPT_DIR."
 	fi
 
-	# Install snaps with classic confinement
+}
+
+install_stuff() {
+	sudo snap install freecad
+	sudo snap install arduino
+	sudo snap install rpi-imager
+}
+
+install_snap_apps() {
+
+	sudo snap install btop
+
+	#sudo snap install musikcube
+	#sudo snap install ncspot
+
+	sudo snap install ykman
+
+}
+
+install_graphics() {
+
 	echo "Installing snap packages with classic confinement..."
 
 	sudo snap install blender --classic
-
+	sudo snap install gimp
+	sudo snap install inkscape
+	sudo snap install upscayl
 }
 
 install_etcher_portable() {
@@ -1435,6 +1502,10 @@ visualstudio_remove() {
 firefox_add() {
 
 	echo "Firefox"
+	echo ""
+	echo "This will REMOVE your current Firefox and ALL IT'S FILES."
+	echo "NO CUURENT BACKUP"
+	echo ""
 
 	read -p "Do you want to upgrade to Firefox ESR? [y/N]: " UPGRADE_FIREFOX
 	if [[ "$UPGRADE_FIREFOX" =~ ^[Yy]$ ]]; then
@@ -1721,9 +1792,10 @@ dev_menu() {
 		echo "2) Android Studio"
 		echo "3) Visual Studio"
 		echo "4) IntelliJ IDEA"
-		echo "5) 🔙 Back to Main Menu"
+		echo "5) Glade (GTK+ UI Designer)"
+		echo "6) 🔙 Back to Main Menu"
 		echo ""
-		read -rp "Please select an option [1-5]: " choice
+		read -rp "Please select an option [1-6]: " choice
 
 		case $choice in
 		1)
@@ -1740,6 +1812,9 @@ dev_menu() {
 			sudo snap install intellij-idea-ultimate --classic
 			;;
 		5)
+			sudo snap install glade
+			;;
+		6)
 			main_menu
 			;;
 		*)
@@ -1789,22 +1864,24 @@ main_menu() {
 		echo "14) Install Cups Printing"
 		echo "15) Firewall / IPTables Setup"
 		echo $SEC_BOT
-		echo -e "${YELLOW}3d Printing${RESET}"
-		echo "16) Install OrcaSlicer"
-		echo "17) Install Repetier Server"
+		echo -e "${YELLOW}Graphics & 3d Printing${RESET}"
+		echo "16) Install Blender/Gimp/Inkscape"
+		echo "17) Install OrcaSlicer"
+		echo "18) Install Repetier Server"
 		echo $SEC_BOT
 		echo -e "${YELLOW}System Maintenance${RESET}"
-		echo "18) Full Applications and System Update(s)"
-		echo "19) Operating System Upgrade"
+		echo "19) Full Applications and System Update(s)"
+		echo "20) Operating System Upgrade"
 		echo $SEC_BOT
 		echo -e "${YELLOW}Backports PPA Repository${RESET}"
-		echo "20) Add Repository "
-		echo "21) Remove Repository"
-		echo "22) Add Firefox-ESR"
+		echo "21) Add Repository "
+		echo "22) Remove Repository"
+		echo "23) Add Firefox-ESR"
+		echo "24) Install Thunderbird"
 		echo $SEC_BOT
-		echo -e "${RED}23) Exit${RESET}"
+		echo -e "${RED}25) Exit${RESET}"
 		echo ""
-		read -rp "Please select an option [1-23]: " choice
+		read -rp "Please select an option [1-25]: " choice
 
 		case $choice in
 		1)
@@ -1858,28 +1935,34 @@ main_menu() {
 			iptables_secure
 			;;
 		16)
-			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
+			install_graphics
 			;;
 		17)
-			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
 			;;
 		18)
+			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+			;;
+		19)
 			# Helper function for updating and upgrading the system
 			update_upgrade
 			;;
-		19)
+		20)
 			update_system
 			;;
-		20)
+		21)
 			repository_add
 			;;
-		21)
+		22)
 			repository_remove
 			;;
-		22)
+		23)
 			firefox_add
 			;;
-		23)
+		24)
+			sudo snap install thunderbird
+			;;
+		25)
 			echo "Exiting."
 			exit 0
 			;;
