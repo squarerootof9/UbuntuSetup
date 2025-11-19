@@ -390,6 +390,10 @@ install_kde_plasma_desktop() {
 		plasma-browser-integration
 		#plasma-welcome
 
+		# testing
+		plasma-integration
+		kaccounts-integration
+
 		# Widgets, calendar, engine add-ons
 		plasma-calendar-addons
 		plasma-dataengines-addons
@@ -453,53 +457,18 @@ install_kde_plasma_desktop() {
 		print-manager
 	)
 
-	ankonadi=(
-		akonadi-server
-		akonadi-backend-mysql
+	kde_pim=(
+		#kdepim-runtime
+		#Merkuro Suite:
+		merkuro kmail kleopatra accountwizard
+		#qml6-module-org-kde-kirigamiaddons-settings
+		#qml6-module-qtlocation
 	)
 
 	# don't forget someday
 	#sudo apt install libreoffice
 
-	#sudo apt install --no-install-recommends kmail accountwizard kleopatra #kaddressbook
-
-	kde_pim=(
-		#Core apps:
-		kalarm
-		#Core framework:
-		kdepim
-		kdepim-runtime
-		#Extra features:
-		kdepim-addons
-		accountwizard
-		libkdepim-plugins
-		kdepim-themeeditors
-
-		#Merkuro Suite:
-		merkuro
-		qml6-module-org-kde-kirigamiaddons-settings
-		qml6-module-qtlocation
-	)
-
-	kde_pim_old=(
-		#Core apps:
-		kontact
-		kmail
-		korganizer
-		kaddressbook
-		kalarm
-		klevernotes
-		#Core framework:
-		kdepim
-		kdepim-runtime
-		#Extra features:
-		kdepim-addons
-		accountwizard
-		libkdepim-plugins
-		kdepim-themeeditors
-	)
-
-	#sudo apt install -y kaccounts-integration kaccounts-providers kio-gdrive nextcloud-desktop owncloud-client telepathy-mission-control-5 plasma-vault
+	# kaccounts-providers nextcloud-desktop owncloud-client telepathy-mission-control-5
 	#kdenetwork-filesharing
 
 	all_packages=(
@@ -1349,6 +1318,8 @@ EOF
 	echo -e "\n${GREEN}✓ VS Code installed successfully.${RESET}\n"
 
 	visualstudio_stealth
+	visualstudio_stealth_hosts
+
 }
 
 visualstudio_stealth() {
@@ -1416,6 +1387,34 @@ with open(path, "w", encoding="utf-8") as f:
 EOF
 
 	echo "✓ VS Code privacy settings applied."
+
+}
+
+visualstudio_stealth_hosts() {
+
+	echo "➜ Adding VS Code telemetry blocklist to /etc/hosts…"
+
+	# Marker comment – used for grep detection
+	MARKER="# VS_CODE_TELEMETRY_BLOCK_START"
+
+	# Check if the block is already present
+	if ! grep -q "$MARKER" /etc/hosts; then
+		sudo tee -a /etc/hosts >/dev/null <<'EOF'
+
+# VS_CODE_TELEMETRY_BLOCK_START
+0.0.0.0 vscodeexperiments.azureedge.net
+0.0.0.0 default.exp-tas.com
+0.0.0.0 exp-tas.com
+0.0.0.0 az764295.vo.msecnd.net
+0.0.0.0 vscode-sync-insiders.trafficmanager.net
+# VS_CODE_TELEMETRY_BLOCK_END
+
+EOF
+
+		echo "✓ Telemetry endpoints added."
+	else
+		echo "✓ Telemetry block already present. No changes made."
+	fi
 
 }
 
