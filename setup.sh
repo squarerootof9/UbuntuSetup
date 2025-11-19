@@ -349,7 +349,6 @@ install_kde_plasma_desktop() {
 		#
 		kinfocenter
 		konsole
-		aha clinfo edid-decode libdisplay-info-bin libpulsedsp mesa-utils mesa-utils-bin pulseaudio-utils vulkan-tools wayland-utils
 		#
 		kwin-x11
 		kdeconnect
@@ -400,8 +399,13 @@ install_kde_plasma_desktop() {
 
 		# Appearance (themes, visuals)
 		plasma-theme-oxygen
-		#plasma-workspace-wallpapers (185M)
+		breeze-gtk-theme
+		plymouth-theme-breeze
+		plymouth-theme-kubuntu-logo
+		plymouth-theme-kubuntu-text
+		
 		plasma-wallpapers-addons
+		#plasma-workspace-wallpapers (185M)
 
 		#add this only after it's updated to qt6
 		#plasma-wallpaper-dynamic
@@ -409,9 +413,10 @@ install_kde_plasma_desktop() {
 		kdegraphics-thumbnailers
 		ffmpegthumbs
 		kimageformat6-plugins
-		plymouth-theme-breeze
-		plymouth-theme-kubuntu-logo
-		plymouth-theme-kubuntu-text
+
+		## ??? ##
+		aha clinfo edid-decode libdisplay-info-bin libpulsedsp mesa-utils mesa-utils-bin pulseaudio-utils vulkan-tools wayland-utils
+
 	)
 
 	kde_kio_modules=(
