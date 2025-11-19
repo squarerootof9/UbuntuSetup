@@ -137,21 +137,24 @@ System Configuration
 14) Install Cups Printing
 15) Firewall / IPTables Setup
 
-3d Printing
-16) Install OrcaSlicer
-17) Install Repetier Server
+Graphics & 3d Printing
+16) Install Blender/Gimp/Inkscape
+17) Install OrcaSlicer
+18) Install Repetier Server
 
 System Maintenance
-18) Full Applications and System Update(s)
-19) Operating System Upgrade
+19) Full Applications and System Update(s)
+20) Operating System Upgrade
 
 Backports PPA Repository
-20) Add Repository
-21) Remove Repository
+21) Add Repository
+22) Remove Repository
+23) Add Firefox-ESR
+24) Install Thunderbird
 
-22) Exit
+25) Exit
 
-Please select an option [1-22]:
+Please select an option [1-25]:
 ```
 
 You can run the script multiple times to change or add components.
