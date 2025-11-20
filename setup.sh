@@ -484,10 +484,10 @@ install_kde_plasma_desktop() {
 	kde_firstboot
 	echo "✨ First-boot configuration complete."
 
-	cat <<EOF >~/.xinputrc
-# set by setup script
-run_im none
-EOF
+	#cat <<EOF >~/.xinputrc
+## set by setup script
+#run_im none
+#EOF
 
 	mkdir -p "$HOME/.config/gtk-3.0"
 	cat >"$HOME/.config/gtk-3.0/settings.ini" <<EOF
@@ -547,7 +547,7 @@ kde_settings() {
 	kwriteconfig6 --file kdeglobals --group "KDE" --key "SingleClick" true
 
 	#Virtual Keyboard
-	kwriteconfig6 --file kcmkeyboardrc --group Keyboard --key VirtualKeyboard IBusWayland
+	#kwriteconfig6 --file kcmkeyboardrc --group Keyboard --key VirtualKeyboard IBusWayland
 
 	# Dolphin startup location and behavior
 	kwriteconfig6 --file dolphinrc --group "General" --key "HomeUrl" "file:///home/$USER"
