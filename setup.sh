@@ -403,7 +403,7 @@ install_kde_plasma_desktop() {
 		plymouth-theme-breeze
 		plymouth-theme-kubuntu-logo
 		plymouth-theme-kubuntu-text
-		
+
 		plasma-wallpapers-addons
 		#plasma-workspace-wallpapers (185M)
 
@@ -413,9 +413,6 @@ install_kde_plasma_desktop() {
 		kdegraphics-thumbnailers
 		ffmpegthumbs
 		kimageformat6-plugins
-
-		## ??? ##
-		aha clinfo edid-decode libdisplay-info-bin libpulsedsp mesa-utils mesa-utils-bin pulseaudio-utils vulkan-tools wayland-utils
 
 	)
 
@@ -486,6 +483,13 @@ install_kde_plasma_desktop() {
 	echo "🚀 Applying first-boot Plasma theme settings..."
 	kde_firstboot
 	echo "✨ First-boot configuration complete."
+
+	mkdir -p "$HOME/.config/gtk-3.0"
+	cat >"$HOME/.config/gtk-3.0/settings.ini" <<EOF
+[Settings]
+gtk-application-prefer-dark-theme=true
+gtk-icon-theme-name=breeze-dark
+EOF
 
 }
 
@@ -699,11 +703,17 @@ install_apt_apps() {
 		unzip dos2unix fwupd geany gparted gpart
 		htop mtools lm-sensors
 		#rpi-imager #qt5 🤔 apt rdepends --installed libqt5core5t64
+		pv tree ripgrep fzf             #jq file
+		7zip p7zip-full p7zip-rar bzip2 #xz-utils
+		smartmontools usbutils usb-modeswitch
+		sleuthkit #autopsy  mac-robber
 	)
+
 	### 💾 File System & Disk Tools
 	fs_disk_tools=(
 		exfatprogs jfsutils reiserfsprogs xfsprogs udftools libparted-dev
 	)
+
 	### 🔐 Security & Auth
 	security_tools=(
 		opensc pcscd fido2-tools yubico-piv-tool libpam-pkcs11 xca wireguard
@@ -719,17 +729,22 @@ EOF
 	### 🖥️ Multimedia / GUI / OBS
 	gui_apps=(
 		obs-studio
+		obs-plugins
 		audacity
 		mpv
 		mplayer mplayer-gui mencoder mplayer-skins #<-mplayer-skin-blue breaks install
-		ffmpeg
 		#vlc #qt5 🤔 apt rdepends --installed libqt5core5t64
 		#smplayer #qt5 🤔
+		ffmpeg
+		yt-dlp
+		dvd+rw-tools
 	)
+
 	### 📱 Mobile / Flash / Embedded
 	embedded_tools=(
-		adb binwalk esptool
+		adb binwalk esptool mtd-utils
 	)
+
 	### 🌍 Web & Remote Tools
 	remote_tools=(
 		curl wget elinks
@@ -741,6 +756,9 @@ EOF
 		traceroute
 		dnsutils
 		netcat-openbsd
+		whois
+		# iperf3: on-demand network throughput testing (do not enable systemd service by default)
+		# lksctp-tools: SCTP protocol tools (telecom/niche) – intentionally not installed
 	)
 
 	### 🛰️ Nmap & Companion Tools
@@ -754,8 +772,13 @@ EOF
 	### 🛠 Miscellaneous / Special Purpose
 	misc_tools=(
 		python-is-python3
+		python3-bs4
+		python3-html5lib
+		#python3-pyqtgraph #qt5 🤔 #pip install pyqtgraph PyQt6 or PySide6
 		#synaptic
 		#dotnet-sdk-9.0
+		## ??? ##
+		aha clinfo edid-decode libdisplay-info-bin libpulsedsp mesa-utils mesa-utils-bin pulseaudio-utils vulkan-tools wayland-utils
 	)
 
 	all_packages=(
