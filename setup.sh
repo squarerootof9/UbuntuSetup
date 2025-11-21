@@ -731,8 +731,12 @@ install_apt_apps() {
 
 	### 🔐 Security & Auth
 	security_tools=(
-		opensc pcscd fido2-tools yubico-piv-tool libpam-pkcs11 xca wireguard
+		opensc pcscd pcsc-tools fido2-tools yubikey-manager yubico-piv-tool libpam-pkcs11 xca wireguard
 	)
+
+	#sudo apt install pcsc-tools pcscd libccid
+	#sudo systemctl enable --now pcscd
+
 
 	#mplayer-skin-blue breaks mplayer-skins install
 	sudo tee /etc/apt/preferences.d/blacklist-mplayer-skin-blue >/dev/null <<EOF
@@ -842,13 +846,13 @@ install_snap_apps() {
 	#sudo snap install musikcube
 	#sudo snap install ncspot
 
-	sudo snap install ykman
+	#sudo snap install ykman
 
 }
 
 install_graphics() {
 
-	echo "Installing snap packages with classic confinement..."
+	echo "Installing snap graphics packages..."
 
 	sudo snap install blender --classic
 	sudo snap install gimp
@@ -1886,7 +1890,7 @@ main_menu() {
 		echo "╰──────────────────────────────────────────╯"
 		echo -e "${YELLOW}Core Application Setup${RESET}"
 		echo "1) System Applications"
-		echo "2) Snap Applications"
+		echo "2) Install btop"
 		echo "3) Install Balena-Etcher"
 		echo "4) Install Veracypt"
 		echo $SEC_BOT
@@ -1931,7 +1935,7 @@ main_menu() {
 			install_apt_apps
 			;;
 		2)
-			install_snap_apps
+			sudo snap install btop
 			;;
 		3)
 			install_etcher_portable
