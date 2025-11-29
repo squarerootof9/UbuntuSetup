@@ -32,10 +32,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOMEBREW_INSTALLED=false
 JAVA_INSTALLED=false
 
-pause() {
-	read -n1 -rsp $'Press any key to continue...\n'
-}
-
 if command -v brew &>/dev/null; then
 	HOMEBREW_INSTALLED=true
 fi
@@ -48,6 +44,75 @@ if command -v java &>/dev/null; then
 	fi
 fi
 
+#######
+# GUI #
+#######
+
+################################################################################
+######       MENUs
+################################################################################
+
+# Text attributes
+BOLD='\033[1m'
+DIM='\033[2m'
+ITALIC='\033[3m' # Not supported in all terminals
+UNDERLINE='\033[4m'
+INVERT='\033[7m'
+
+# Reset (clears *all* attributes)
+RESET='\033[0m'
+
+# Colors (foreground)
+RED='\033[31m'
+GREEN='\033[32m'
+YELLOW='\033[33m'
+BLUE='\033[34m'
+MAGENTA='\033[35m'
+CYAN='\033[36m'
+WHITE='\033[37m'
+
+# Colors (bright)
+BRIGHT_RED='\033[91m'
+BRIGHT_GREEN='\033[92m'
+BRIGHT_YELLOW='\033[93m'
+BRIGHT_BLUE='\033[94m'
+BRIGHT_MAGENTA='\033[95m'
+BRIGHT_CYAN='\033[96m'
+BRIGHT_WHITE='\033[97m'
+
+confirm() {
+	local message="${1:-}"
+	# Usage: confirm "message" || return 1
+	echo -en "${CYAN}$message${RESET} ${YELLOW}[Y/n]${RESET}: "
+	read -r ans
+	case "${ans,,}" in
+	y | yes | "") return 0 ;;
+	*)
+		echo -e "${RED}✗ Operation cancelled.${RESET}\n"
+		return 1
+		;;
+	esac
+}
+
+pause() {
+	read -n1 -rsp $'Press any key to continue...\n'
+}
+
+msg_start() {
+	local message="${1:-}"
+	echo -e "\n${CYAN}➜ ${message}${RESET}"
+}
+
+msg_end() {
+	local message="${1:-}"
+	echo -e "\n${GREEN}✓ ${message}${RESET}\n"
+}
+
+msg_text() {
+	local message="${1:-}"
+	echo -e "${YELLOW}${message}${RESET}"
+}
+
 install_development() {
 
 	echo ""
@@ -58,6 +123,7 @@ install_development() {
 
 	#flex bison ant	ragel lua5.4
 
+	#build-essential  libdbus-1-dev  libgeoclue-2-dev  libglib2.0-dev  libgps-dev  libsystemd-dev  meson
 	sudo apt install --no-install-recommends \
 		make cmake ninja-build automake autoconf autopoint libtool g++ pkg-config swig \
 		doxygen graphviz libltdl-dev libcurl4-openssl-dev gettext intltool \
@@ -247,6 +313,22 @@ remove_java() {
 	fi
 }
 
+###KDE
+
+build_kde() {
+
+	cd ~
+	curl 'https://invent.kde.org/sdk/kde-builder/-/raw/master/scripts/initial_setup.sh' >initial_setup.sh
+	chmod +x initial_setup.sh
+	bash initial_setup.sh
+	#source ~/kde/env.sh
+	kde-builder --generate-config
+	kde-builder --install-distro-packages
+	kde-builder kcalc
+	kde-builder --run kcalc
+
+}
+
 ################################################################################
 ######                          Node.JS®
 ################################################################################
@@ -411,7 +493,7 @@ install_kde_plasma_desktop() {
 		#plasma-wallpaper-dynamic
 
 		kdegraphics-thumbnailers
-		ffmpegthumbs
+		ffmpegthumbs #video thumbnail generator for KDE file managers
 		kimageformat6-plugins
 
 	)
@@ -480,6 +562,9 @@ install_kde_plasma_desktop() {
 
 	install_apps "${all_packages[@]}"
 
+	sudo snap install icon-theme-breeze
+	#sudo snap install kde-frameworks-5-99-qt-5-15-7-core20
+
 	echo "🚀 Applying first-boot Plasma theme settings..."
 	kde_firstboot
 	echo "✨ First-boot configuration complete."
@@ -513,7 +598,7 @@ install_sddm() {
 	#echo -e "[General]\nDisplayServer=wayland" | sudo tee /etc/sddm.conf.d/10-wayland.conf
 
 	echo ""
-	read -p "⌨️  Install virtual keyboard support? [y/N]: " INSTALL_VK
+	read -p "⌨️  Install touchscreen virtual keyboard support? [y/N]: " INSTALL_VK
 	if [[ "$INSTALL_VK" =~ ^[Yy]$ ]]; then
 		echo "✔ Adding virtual keyboard support..."
 		sddm_pkgs+=("qt6-virtualkeyboard-plugin")
@@ -718,10 +803,11 @@ install_apt_apps() {
 		unzip dos2unix fwupd geany gparted gpart
 		htop mtools lm-sensors
 		#rpi-imager #qt5 🤔 apt rdepends --installed libqt5core5t64
-		pv tree ripgrep fzf             #jq file
-		7zip p7zip-full p7zip-rar bzip2 #xz-utils
+		pv tree ripgrep fzf   #jq file
+		7zip p7zip-full bzip2 # p7zip-rar xz-utils
 		smartmontools usbutils usb-modeswitch
 		sleuthkit #autopsy  mac-robber
+		gtkhash
 	)
 
 	### 💾 File System & Disk Tools
@@ -737,27 +823,35 @@ install_apt_apps() {
 	#sudo apt install pcsc-tools pcscd libccid
 	#sudo systemctl enable --now pcscd
 
-
-	#mplayer-skin-blue breaks mplayer-skins install
-	sudo tee /etc/apt/preferences.d/blacklist-mplayer-skin-blue >/dev/null <<EOF
-Package: mplayer-skin-blue
-Pin: release *
-Pin-Priority: -1
-EOF
-
 	### 🖥️ Multimedia / GUI / OBS
 	gui_apps=(
 		obs-studio
 		obs-plugins
 		audacity
 		mpv
-		mplayer mplayer-gui mencoder mplayer-skins #<-mplayer-skin-blue breaks install
+		mplayer mplayer-gui mencoder
 		#vlc #qt5 🤔 apt rdepends --installed libqt5core5t64
 		#smplayer #qt5 🤔
+
 		ffmpeg
 		yt-dlp
 		dvd+rw-tools
+
+		#Command-line PulseAudio utilities (PipeWire implements PulseAudio compatibility)
+		pulseaudio-utils
+		libpulsedsp #DSP plugin library for PulseAudio. (🤔?)
+
 	)
+
+	#########################################################
+	#mplayer-skin-blue breaks mplayer-skins install
+	sudo tee /etc/apt/preferences.d/blacklist-mplayer-skin-blue >/dev/null <<EOF
+Package: mplayer-skin-blue
+Pin: release *
+Pin-Priority: -1
+EOF
+	gui_apps+=("mplayer-skins")
+	#########################################################
 
 	### 📱 Mobile / Flash / Embedded
 	embedded_tools=(
@@ -773,7 +867,7 @@ EOF
 	network_tools=(
 		net-tools
 		traceroute
-		dnsutils
+		bind9-dnsutils
 		netcat-openbsd
 		whois
 		# iperf3: on-demand network throughput testing (do not enable systemd service by default)
@@ -796,8 +890,17 @@ EOF
 		#python3-pyqtgraph #qt5 🤔 #pip install pyqtgraph PyQt6 or PySide6
 		#synaptic
 		#dotnet-sdk-9.0
-		## ??? ##
-		aha clinfo edid-decode libdisplay-info-bin libpulsedsp mesa-utils mesa-utils-bin pulseaudio-utils vulkan-tools wayland-utils
+
+		aha #Ansi Hilight to HTML.
+
+		clinfo              #Shows OpenCL platform/device info.
+		edid-decode         #Decodes EDID info from monitors
+		libdisplay-info-bin #Tools for parsing/displaying monitor/video capability
+
+		#Classic Mesa/GPU OpenGL helper tools:
+		mesa-utils mesa-utils-bin
+
+		vulkan-tools wayland-utils
 	)
 
 	all_packages=(
@@ -813,6 +916,164 @@ EOF
 	)
 
 	install_apps "${all_packages[@]}"
+
+}
+
+install_audio_studio() {
+
+	### 🖥️ Audio / Video / Music
+	audio_apps=(
+
+		pavucontrol   # simple volume/mixer UI for Pulse/PipeWire
+		qpwgraph      # PipeWire/JACK patchbay (no need for helvum)
+		pipewire-jack # JACK compatibility layer on PipeWire
+		#easyeffects   # system-wide PipeWire FX/EQ for in/out audio
+
+		meterbridge       # JACK peak/VU/PPM meters
+		fmit              # instrument tuner
+		kmetronome        # KDE/Qt metronome
+		hydrogen          # drum machine + pattern sequencer
+		hydrogen-drumkits # (~166 MB)
+		rubberband-cli
+
+		jack-keyboard # JACK virtual MIDI keyboard
+		vmpk          # virtual MIDI piano keyboard (Qt)
+		vkeybd        # lightweight X11 virtual MIDI keyboard
+
+		qsynth             # GUI front-end for Fluidsynth (software synth)
+		fluid-soundfont-gm # General MIDI soundfont (~130 MB)
+		fluid-soundfont-gs # Roland GS-style soundfont
+		qtractor           # MIDI+audio multitrack sequencer/DAW
+		#musescore3         # notation/score editor (MuseScore Studio 3; 4.x via AppImage/Snap)
+
+		rakarrack    # real-time guitar effects rack
+		calf-plugins # LV2/LADSPA suite (EQ, comp, synths, etc.)
+		lsp-plugins  # pro-grade LV2/LADSPA/CLAP/VST plugin bundle
+		x42-plugins  # meters/utility + audio/video-friendly plugins
+		zam-plugins  # ZamAudio LV2/LADSPA FX (compressors, EQ, etc.)
+		mda-lv2      # classic LV2 plugin pack (bread-and-butter FX)
+		carla        # modular plugin host for LV2/VST/etc.
+
+		ardour                # full DAW (multitrack audio/MIDI)
+		ardour-video-timeline # video timeline integration for Ardour
+
+		xjadeo # non-linear video editor (open source)
+
+		##################
+		# future thoughts
+		# carla-control   # optional remote GUI for Carla
+		# kdenlive        # non-linear video editor
+		# lmms            # pattern/loop-based DAW
+		# minuet          # KDE ear-training (intervals, chords, scales…)
+		# MuseScore 4+    # handle via AppImage/Snap as “MuseScore Studio”
+	)
+
+	#systemctl --user --now enable pipewire pipewire-pulse wireplumber.service
+	#systemctl --user restart pipewire pipewire-pulse wireplumber.service
+
+	install_apps "${audio_apps[@]}"
+
+	systemctl --user restart pipewire
+
+	msg_start "Adding 'Multimedia (LSP)' category to plasma menu."
+	menu_items
+	msg_start "Setting JACK apps to use PipeWire's pw-jack shim instead of expecting a real jackd daemon."
+	echo ""
+	jackify_dir_desktops /usr/share/applications
+	echo ""
+	jackify_dir_desktops "$HOME/.local/share/applications"
+	echo ""
+
+}
+
+all_applications=(
+	meterbridge
+	net.sourceforge.kmetronome.desktop
+	jack-keyboard
+	vkeybd
+	org.rncbc.qsynth
+	org.rncbc.qtractor
+	rakarrack
+	calf
+	in.lsp_plug.lsp_plugins_*
+	carla
+	ardour
+	xjadeo
+)
+
+jackify_dir_desktops() {
+	local dir="$1"
+
+	# optional: ignore non-matching globs instead of keeping literals
+	shopt -s nullglob
+	for app in "${all_applications[@]}"; do
+		for f in "$dir"/$app.desktop; do
+			[[ -f "$f" ]] || continue
+			jackify_desktop_exec "$f"
+		done
+	done
+	shopt -u nullglob
+}
+
+# ------------------------------------------------------------
+# Prefix a .desktop Exec= line with pw-jack
+# Usage: jackify_desktop_exec /usr/share/applications/xjadeo.desktop
+# Result: Exec=/usr/bin/xjadeo
+#      -> Exec=pw-jack /usr/bin/xjadeo
+# ------------------------------------------------------------
+jackify_desktop_exec() {
+	local file="$1"
+
+	if [[ -z "$file" ]]; then
+		echo "jackify_desktop_exec: no file specified" >&2
+		return 1
+	fi
+
+	if [[ ! -f "$file" ]]; then
+		echo "jackify_desktop_exec: file not found: $file" >&2
+		return 1
+	fi
+
+	# Show what we're about to touch (for sanity)
+	# echo "Jackifying Exec= in: $file"
+	echo -en "${YELLOW}.${RESET}"
+
+	# This makes the change idempotent:
+	# - If Exec=/usr/bin/xjadeo        -> Exec=pw-jack /usr/bin/xjadeo
+	# - If Exec=pw-jack /usr/bin/xjadeo -> stays Exec=pw-jack /usr/bin/xjadeo
+	sudo sed -i -E 's|^Exec=(pw-jack[[:space:]]+)?(.+)$|Exec=pw-jack \2|' "$file"
+}
+
+menu_items() {
+
+	# Desktop entry
+	sudo mkdir -p /usr/share/extra-xdg-menus
+	sudo tee /usr/share/extra-xdg-menus/lsp-plugins.menu >/dev/null <<'EOF'
+<!DOCTYPE Menu PUBLIC "-//freedesktop//DTD Menu 1.0//EN"
+ "http://www.freedesktop.org/standards/menu-spec/1.0/menu.dtd">
+<Menu>
+  <Name>Applications</Name>
+  <Menu>
+    <Name>MM Plugins</Name>
+    <Directory>lsp-plugins.directory</Directory>
+    <Include>
+        <Category>X-LSP-Plugins</Category>
+    </Include>
+  </Menu> <!-- End -->
+</Menu>
+EOF
+	# menu entry name
+	sudo mkdir -p /usr/share/desktop-directories
+	sudo tee /usr/share/desktop-directories/lsp-plugins.directory >/dev/null <<'EOF'
+[Desktop Entry]
+Type=Directory
+Name=Multimedia (LSP)
+Icon=applications-multimedia
+EOF
+
+	#this symlink needs remade for the system to see changes (when testing)
+	sudo rm /etc/xdg/menus/applications-merged/lsp-plugins.menu
+	sudo ln -s /usr/share/extra-xdg-menus/lsp-plugins.menu /etc/xdg/menus/applications-merged/lsp-plugins.menu
 
 }
 
@@ -833,21 +1094,11 @@ install_snap_apps_old() {
 
 }
 
-install_stuff() {
-	sudo snap install freecad
-	sudo snap install arduino
-	sudo snap install rpi-imager
-}
-
 install_snap_apps() {
 
 	sudo snap install btop
-
 	#sudo snap install musikcube
 	#sudo snap install ncspot
-
-	#sudo snap install ykman
-
 }
 
 install_graphics() {
@@ -1327,75 +1578,30 @@ qt5check() {
 
 }
 
-################################################################################
-######       MENUs
-################################################################################
-
-# Text attributes
-BOLD='\033[1m'
-DIM='\033[2m'
-ITALIC='\033[3m' # Not supported in all terminals
-UNDERLINE='\033[4m'
-INVERT='\033[7m'
-
-# Reset (clears *all* attributes)
-RESET='\033[0m'
-
-# Colors (foreground)
-RED='\033[31m'
-GREEN='\033[32m'
-YELLOW='\033[33m'
-BLUE='\033[34m'
-MAGENTA='\033[35m'
-CYAN='\033[36m'
-WHITE='\033[37m'
-
-# Colors (bright)
-BRIGHT_RED='\033[91m'
-BRIGHT_GREEN='\033[92m'
-BRIGHT_YELLOW='\033[93m'
-BRIGHT_BLUE='\033[94m'
-BRIGHT_MAGENTA='\033[95m'
-BRIGHT_CYAN='\033[96m'
-BRIGHT_WHITE='\033[97m'
-
-confirm() {
-	# Usage: confirm "message" || return 1
-	echo -en "${CYAN}$1${RESET} ${YELLOW}[Y/n]${RESET}: "
-	read -r ans
-	case "${ans,,}" in
-	y | yes | "") return 0 ;;
-	*)
-		echo -e "${RED}✗ Operation cancelled.${RESET}\n"
-		return 1
-		;;
-	esac
-}
-
 repository_add() {
 	echo ""
 	confirm "Add the Kubuntu Backports PPA?" || return 1
 
-	echo -e "\n${CYAN}➜ Adding Kubuntu Backports PPA…${RESET}"
-	echo -e "${YELLOW}  (Official Kubuntu repo providing newer KDE Plasma packages)${RESET}\n"
+	msg_start "Adding Kubuntu Backports PPA…"
+	msg_text "  (Official Kubuntu repo providing newer KDE Plasma packages)"
 
 	sudo add-apt-repository -y ppa:kubuntu-ppa/backports
 	sudo apt update
 
-	echo -e "\n${GREEN}✓ Kubuntu Backports PPA added successfully.${RESET}\n"
+	msg_end "Kubuntu Backports PPA added successfully."
 }
 
 repository_remove() {
 	echo ""
 	confirm "Remove the Kubuntu Backports PPA?" || return 1
 
-	echo -e "\n${CYAN}➜ Removing Kubuntu Backports PPA…${RESET}"
-	echo -e "${YELLOW}  (Returning to standard Ubuntu KDE packages)${RESET}\n"
+	msg_start "Removing Kubuntu Backports PPA…"
+	msg_text "  (Returning to standard Ubuntu KDE packages)"
 
 	sudo add-apt-repository -y --remove ppa:kubuntu-ppa/backports
 	sudo apt update
 
-	echo -e "\n${GREEN}✓ Kubuntu Backports PPA removed successfully.${RESET}\n"
+	msg_end "Kubuntu Backports PPA removed successfully."
 }
 
 visualstudio_add() {
@@ -1403,7 +1609,7 @@ visualstudio_add() {
 	# Install dependencies
 	sudo apt install -y curl
 
-	echo -e "\n${CYAN}➜ Adding Microsoft VS Code repository…${RESET}"
+	msg_start "Adding Microsoft VS Code repository…"
 
 	# Import GPG key (modern method)
 	curl -fsSL https://packages.microsoft.com/keys/microsoft.asc |
@@ -1429,7 +1635,7 @@ EOF
 	sudo apt update
 	sudo apt install -y code
 
-	echo -e "\n${GREEN}✓ VS Code installed successfully.${RESET}\n"
+	msg_end "VS Code installed successfully."
 
 	visualstudio_stealth
 	visualstudio_stealth_hosts
@@ -1534,7 +1740,7 @@ EOF
 
 visualstudio_remove() {
 
-	echo -e "\n${CYAN}➜ Removing Microsoft VS Code and repository…${RESET}"
+	msg_start "Removing Microsoft VS Code and repository…"
 
 	sudo apt purge -y code
 	sudo apt autoremove -y
@@ -1543,7 +1749,7 @@ visualstudio_remove() {
 	sudo rm -f /etc/apt/sources.list.d/vscode.*
 	sudo apt update
 
-	echo -e "\n${GREEN}✓ VS Code and repository removed.${RESET}\n"
+	msg_end "VS Code and repository removed."
 }
 
 firefox_add() {
@@ -1557,37 +1763,37 @@ firefox_add() {
 	read -p "Do you want to upgrade to Firefox ESR? [y/N]: " UPGRADE_FIREFOX
 	if [[ "$UPGRADE_FIREFOX" =~ ^[Yy]$ ]]; then
 
-		echo -e "\n${CYAN}➜ Removing Previous Mozilla Firefox…${RESET}"
+		msg_start "Removing Previous Mozilla Firefox…"
 
 		sudo snap remove firefox
 		sudo apt purge -y firefox
 		sudo apt autoremove -y
 
-		echo -e "\n${CYAN}➜ Adding Mozilla Firefox ESR repository…${RESET}"
+		msg_start "Adding Mozilla Firefox ESR repository…"
 
 		sudo add-apt-repository -y ppa:mozillateam/ppa
 
 		# Prevent Snap Firefox from stealing priority
-		echo -e "${YELLOW}➜ Setting APT priority to prefer deb over snap…${RESET}"
+		msg_text "➜ Setting APT priority to prefer deb over snap…"
 		sudo tee /etc/apt/preferences.d/mozillateam.pref >/dev/null <<'EOF'
 Package: firefox*
 Pin: release o=LP-PPA-mozillateam
 Pin-Priority: 1001
 EOF
-		echo -e "\n${CYAN}➜ Updating apt…${RESET}"
+		msg_start "Updating apt…"
 		sudo apt update
 
-		echo -e "\n${CYAN}➜ Installing firefox-esr…${RESET}"
+		msg_start "Installing firefox-esr…"
 		sudo apt install -y firefox-esr
 
-		echo -e "\n${GREEN}✓ Firefox ESR installed successfully.${RESET}\n"
+		msg_end "Firefox ESR installed successfully."
 
 	fi
 
 }
 
 firefox_remove() {
-	echo -e "\n${CYAN}➜ Removing Firefox ESR and Mozilla repository…${RESET}"
+	msg_start "Removing Firefox ESR and Mozilla repository…"
 
 	sudo apt purge -y firefox-esr
 	sudo apt autoremove -y
@@ -1597,24 +1803,24 @@ firefox_remove() {
 
 	sudo apt update
 
-	echo -e "\n${GREEN}✓ Firefox ESR and repository removed.${RESET}\n"
+	msg_end "Firefox ESR and repository removed."
 }
 
 openshot_add() {
 
 	#flatpak install flathub org.openshot.OpenShot
 
-	echo -e "\n${CYAN}➜ Adding OpenShot Video Editor PPA and installing…${RESET}"
+	msg_start "Adding OpenShot Video Editor PPA and installing…"
 
 	sudo add-apt-repository -y ppa:openshot.developers/ppa
 	sudo apt update
 	sudo apt install -y openshot-qt python3-openshot
 
-	echo -e "\n${GREEN}✓ OpenShot Video Editor installed successfully.${RESET}\n"
+	msg_end "OpenShot Video Editor installed successfully."
 }
 
 openshot_remove() {
-	echo -e "\n${CYAN}➜ Removing OpenShot Video Editor and its PPA…${RESET}"
+	msg_start "Removing OpenShot Video Editor and its PPA…"
 
 	sudo apt purge -y openshot-qt python3-openshot
 	sudo apt autoremove -y
@@ -1622,21 +1828,21 @@ openshot_remove() {
 	sudo add-apt-repository -y --remove ppa:openshot.developers/ppa
 	sudo apt update
 
-	echo -e "\n${GREEN}✓ OpenShot Video Editor and PPA removed.${RESET}\n"
+	msg_end "OpenShot Video Editor and PPA removed."
 }
 
 androidstudio_add() {
-	echo -e "\n${CYAN}➜ Adding Android Studio PPA and installing…${RESET}"
+	msg_start "Adding Android Studio PPA and installing…"
 
 	sudo add-apt-repository -y ppa:maarten-fonville/android-studio
 	sudo apt update
 	sudo apt install -y android-studio
 
-	echo -e "\n${GREEN}✓ Android Studio installed successfully.${RESET}\n"
+	msg_end "Android Studio installed successfully."
 }
 
 androidstudio_remove() {
-	echo -e "\n${CYAN}➜ Removing Android Studio and its PPA…${RESET}"
+	msg_start "Removing Android Studio and its PPA…"
 
 	sudo apt purge -y android-studio
 	sudo apt autoremove -y
@@ -1644,7 +1850,16 @@ androidstudio_remove() {
 	sudo add-apt-repository -y --remove ppa:maarten-fonville/android-studio
 	sudo apt update
 
-	echo -e "\n${GREEN}✓ Android Studio and PPA removed.${RESET}\n"
+	msg_end "Android Studio and PPA removed."
+}
+
+install_musecore() {
+
+	sudo snap install musescore --candidate
+
+	sudo snap connect musescore:alsa
+	sudo snap connect musescore:removable-media
+
 }
 
 #apt rdepends --installed libqt5core5t64
@@ -1669,7 +1884,7 @@ manage_java() {
 		echo "╭──────────────────────────────────────────╮"
 		echo -e "│             ${BOLD}${CYAN}Java Management${RESET}              │"
 		echo "╰──────────────────────────────────────────╯"
-		echo -e "${YELLOW}Select the Java version to install:${RESET}"
+		msg_text "Select the Java version to install:"
 		echo "1) default-jre"
 		echo "2) openjdk-8-jre-headless"
 		echo "3) openjdk-11-jre-headless"
@@ -1723,7 +1938,7 @@ nodejs_menu() {
 		echo "╭──────────────────────────────────────────╮"
 		echo -e "│               ${BOLD}${CYAN}Node.JS® Menu${RESET}              │"
 		echo "╰──────────────────────────────────────────╯"
-		echo -e "${YELLOW}Node.JS® Setup${RESET}"
+		msg_text "Node.JS® Setup"
 		echo "1) Install Node.JS®"
 		echo "2) Remove Node.JS®"
 		echo "3) 🔙 Back to Main Menu"
@@ -1758,7 +1973,7 @@ hb_menu() {
 		echo "╭──────────────────────────────────────────╮"
 		echo -e "│               ${BOLD}${CYAN}Homebrew Menu${RESET}              │"
 		echo "╰──────────────────────────────────────────╯"
-		echo -e "${YELLOW}Homebrew Setup${RESET}"
+		msg_text "Homebrew Setup"
 		echo "1) Install Homebrew"
 		echo "2) Remove Homebrew"
 		echo "3) 🔙 Back to Main Menu"
@@ -1793,7 +2008,7 @@ flatpak_menu() {
 		echo "╭──────────────────────────────────────────╮"
 		echo -e "│               ${BOLD}${CYAN}Flatpak Menu${RESET}               │"
 		echo "╰──────────────────────────────────────────╯"
-		echo -e "${YELLOW}Flatpak Setup${RESET}"
+		msg_text "Flatpak Setup"
 		echo "1) Install Flatpak"
 		echo "2) Remove Flatpak"
 		echo "3) 🔙 Back to Main Menu"
@@ -1802,14 +2017,14 @@ flatpak_menu() {
 
 		case $choice in
 		1)
-			echo -e "${CYAN}➜ Installing Flatpak…${RESET}"
+			msg_start "Installing Flatpak…"
 			sudo apt install flatpak
-			echo -e "${CYAN}➜ Adding Flathub remote repository…${RESET}"
+			msg_start "Adding Flathub remote repository…"
 			flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
 			;;
 		2)
-			echo -e "${CYAN}➜ Removing Flatpak…${RESET}"
+			msg_start "Removing Flatpak…"
 			sudo apt remove flatpak
 			sudo apt autoremove
 			;;
@@ -1834,7 +2049,7 @@ dev_menu() {
 		echo "╭──────────────────────────────────────────╮"
 		echo -e "│         ${BOLD}${CYAN}Development Utilities Menu${RESET}       │"
 		echo "╰──────────────────────────────────────────╯"
-		echo -e "${YELLOW}Core Application Setup${RESET}"
+		msg_text "Core Application Setup"
 		echo "1) Development Utilities (make, etc...)"
 		echo "2) Android Studio"
 		echo "3) Visual Studio"
@@ -1888,128 +2103,136 @@ main_menu() {
 		echo "╭──────────────────────────────────────────╮"
 		echo -e "│             ${BOLD}${CYAN}Ubuntu Setup Menu${RESET}            │"
 		echo "╰──────────────────────────────────────────╯"
-		echo -e "${YELLOW}Core Application Setup${RESET}"
+		msg_text "Core Application Setup"
 		echo "1) System Applications"
-		echo "2) Install btop"
-		echo "3) Install Balena-Etcher"
-		echo "4) Install Veracypt"
+		echo "2) Audio Studio"
+		echo "3) Install btop"
+		echo "4) Install Balena-Etcher"
+		echo "5) Install Veracypt"
 		echo $SEC_BOT
-		echo -e "${YELLOW}Development Tools${RESET}"
-		echo "5) Development Applications"
-		echo "6) Add/Remove Java"
-		echo "7) Add/Remove Node.js®"
-		echo "8) Add/Remove Homebrew"
-		echo "9) Add/Remove Flatpak"
+		msg_text "Development Tools"
+		echo "6) Development Applications"
+		echo "7) Add/Remove Java"
+		echo "8) Add/Remove Node.js®"
+		echo "9) Add/Remove Homebrew"
+		echo "10) Add/Remove Flatpak"
 		echo $SEC_BOT
-		echo -e "${YELLOW}Desktop Environment${RESET}"
-		echo "10) Install Plasma/KDE Desktop"
-		echo "11) Add Plasma/KDE Settings"
-		echo "12) Install SDDM Desktop Manager"
+		msg_text "Desktop Environment"
+		echo "11) Install Plasma/KDE Desktop"
+		echo "12) Add Plasma/KDE Settings"
+		echo "13) Install SDDM Desktop Manager"
 		echo $SEC_BOT
-		echo -e "${YELLOW}System Configuration${RESET}"
-		echo "13) Set Up SSH Server"
-		echo "14) Install Cups Printing"
-		echo "15) Firewall / IPTables Setup"
+		msg_text "System Configuration"
+		echo "14) Set Up SSH Server"
+		echo "15) Install Cups Printing"
+		echo "16) Firewall / IPTables Setup"
 		echo $SEC_BOT
-		echo -e "${YELLOW}Graphics & 3d Printing${RESET}"
-		echo "16) Install Blender/Gimp/Inkscape"
-		echo "17) Install OrcaSlicer"
-		echo "18) Install Repetier Server"
+		msg_text "Graphics & 3d Printing"
+		echo "17) Install Blender/Gimp/Inkscape"
+		echo "18) Install Freecad"
+		echo "19) Install OrcaSlicer"
+		echo "20) Install Repetier Server"
+		echo "21) Install Arduino/RP-Imager"
 		echo $SEC_BOT
-		echo -e "${YELLOW}System Maintenance${RESET}"
-		echo "19) Full Applications and System Update(s)"
-		echo "20) Operating System Upgrade"
+		msg_text "System Maintenance"
+		echo "22) Full Applications and System Update(s)"
+		echo "23) Operating System Upgrade"
 		echo $SEC_BOT
-		echo -e "${YELLOW}Backports PPA Repository${RESET}"
-		echo "21) Add Repository "
-		echo "22) Remove Repository"
-		echo "23) Add Firefox-ESR"
-		echo "24) Install Thunderbird"
+		msg_text "Backports PPA Repository"
+		echo "24) Add Repository "
+		echo "25) Remove Repository"
+		echo "26) Add Firefox-ESR"
+		echo "27) Install Thunderbird"
 		echo $SEC_BOT
-		echo -e "${RED}25) Exit${RESET}"
+		echo -e "${RED}28) Exit${RESET}"
 		echo ""
-		read -rp "Please select an option [1-25]: " choice
+		read -rp "Please select an option [1-28]: " choice
 
 		case $choice in
 		1)
 			install_apt_apps
 			;;
 		2)
-			sudo snap install btop
+			install_audio_studio
 			;;
 		3)
-			install_etcher_portable
+			sudo snap install btop
 			;;
 		4)
-			install_deb_packages "https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
+			install_etcher_portable
 			;;
 		5)
-			dev_menu
+			install_deb_packages "https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
 			;;
 		6)
-			manage_java
+			dev_menu
 			;;
 		7)
-			nodejs_menu
+			manage_java
 			;;
 		8)
-			hb_menu
+			nodejs_menu
 			;;
 		9)
-			flatpak_menu
+			hb_menu
 			;;
 		10)
-			install_kde_plasma_desktop
+			flatpak_menu
 			;;
 		11)
-			# Add Kubuntu Desktop
-			#install_kde_desktop
-			kde_settings
+			install_kde_plasma_desktop
 			;;
 		12)
-			# Remove Kubuntu Desktop
-			#remove_kde_desktop
-			install_sddm
+			kde_settings
 			;;
 		13)
-			# Set Up SSH
-			setup_ssh
+			install_sddm
 			;;
 		14)
-			install_cups
+			setup_ssh
 			;;
 		15)
-			iptables_secure
+			install_cups
 			;;
 		16)
-			install_graphics
+			iptables_secure
 			;;
 		17)
-			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
+			install_graphics
 			;;
 		18)
-			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+			sudo snap install freecad
 			;;
 		19)
-			# Helper function for updating and upgrading the system
-			update_upgrade
+			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
 			;;
 		20)
-			update_system
+			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 			;;
 		21)
-			repository_add
+
+			sudo snap install arduino
+			sudo snap install rpi-imager
 			;;
 		22)
-			repository_remove
+			update_upgrade
 			;;
 		23)
-			firefox_add
+			update_system
 			;;
 		24)
-			sudo snap install thunderbird
+			repository_add
 			;;
 		25)
+			repository_remove
+			;;
+		26)
+			firefox_add
+			;;
+		27)
+			sudo snap install thunderbird
+			;;
+		28)
 			echo "Exiting."
 			exit 0
 			;;
@@ -2018,11 +2241,17 @@ main_menu() {
 			lock_out
 			;;
 		qt)
-			#secret qt check
+			# 🕵🏻‍♂️ secret qt check
 			qt5check
 			;;
 		ffremove)
 			firefox_remove
+			;;
+		openshot)
+			openshot_add
+			;;
+		muse)
+			install_musecore
 			;;
 		*)
 			echo "Invalid option. Please try again."

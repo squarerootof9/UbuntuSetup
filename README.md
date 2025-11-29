@@ -116,45 +116,48 @@ chmod +x setup.sh
 ╰──────────────────────────────────────────╯
 Core Application Setup
 1) System Applications
-2) Snap Applications
-3) Install Balena-Etcher
-4) Install Veracypt
+2) Audio Studio
+3) Install btop
+4) Install Balena-Etcher
+5) Install Veracypt
 
 Development Tools
-5) Development Applications
-6) Add/Remove Java
-7) Add/Remove Node.js®
-8) Add/Remove Homebrew
-9) Add/Remove Flatpak
+6) Development Applications
+7) Add/Remove Java
+8) Add/Remove Node.js®
+9) Add/Remove Homebrew
+10) Add/Remove Flatpak
 
 Desktop Environment
-10) Install Plasma/KDE Desktop
-11) Add Plasma/KDE Settings
-12) Install SDDM Desktop Manager
+11) Install Plasma/KDE Desktop
+12) Add Plasma/KDE Settings
+13) Install SDDM Desktop Manager
 
 System Configuration
-13) Set Up SSH Server
-14) Install Cups Printing
-15) Firewall / IPTables Setup
+14) Set Up SSH Server
+15) Install Cups Printing
+16) Firewall / IPTables Setup
 
 Graphics & 3d Printing
-16) Install Blender/Gimp/Inkscape
-17) Install OrcaSlicer
-18) Install Repetier Server
+17) Install Blender/Gimp/Inkscape
+18) Install Freecad
+19) Install OrcaSlicer
+20) Install Repetier Server
+21) Install Arduino/RP-Imager
 
 System Maintenance
-19) Full Applications and System Update(s)
-20) Operating System Upgrade
+22) Full Applications and System Update(s)
+23) Operating System Upgrade
 
 Backports PPA Repository
-21) Add Repository
-22) Remove Repository
-23) Add Firefox-ESR
-24) Install Thunderbird
+24) Add Repository
+25) Remove Repository
+26) Add Firefox-ESR
+27) Install Thunderbird
 
-25) Exit
+28) Exit
 
-Please select an option [1-25]:
+Please select an option [1-28]:
 ```
 
 You can run the script multiple times to change or add components.
