@@ -316,7 +316,7 @@ remove_java() {
 ###KDE
 
 build_kde() {
-
+	#https://develop.kde.org/docs/getting-started/building/kde-builder-setup/
 	cd ~
 	curl 'https://invent.kde.org/sdk/kde-builder/-/raw/master/scripts/initial_setup.sh' >initial_setup.sh
 	chmod +x initial_setup.sh
@@ -803,11 +803,20 @@ install_apt_apps() {
 		unzip dos2unix fwupd geany gparted gpart
 		htop mtools lm-sensors
 		#rpi-imager #qt5 🤔 apt rdepends --installed libqt5core5t64
-		pv tree ripgrep fzf   #jq file
-		7zip p7zip-full bzip2 # p7zip-rar xz-utils
+		pv tree ripgrep fzf #jq file
 		smartmontools usbutils usb-modeswitch
 		sleuthkit #autopsy  mac-robber
 		gtkhash
+	)
+
+	### 🗜️ Compression Tools
+	compression_pkgs=(
+		zip
+		unzip
+		7zip
+		7zip-rar
+		bzip2
+		xz-utils
 	)
 
 	### 💾 File System & Disk Tools
@@ -840,7 +849,6 @@ install_apt_apps() {
 		#Command-line PulseAudio utilities (PipeWire implements PulseAudio compatibility)
 		pulseaudio-utils
 		libpulsedsp #DSP plugin library for PulseAudio. (🤔?)
-
 	)
 
 	#########################################################
@@ -906,6 +914,7 @@ EOF
 	all_packages=(
 		"${system_utils[@]}"
 		"${fs_disk_tools[@]}"
+		"${compression_pkgs[@]}"
 		"${security_tools[@]}"
 		"${gui_apps[@]}"
 		"${embedded_tools[@]}"
