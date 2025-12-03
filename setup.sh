@@ -959,7 +959,7 @@ install_audio_studio() {
 		calf-plugins # LV2/LADSPA suite (EQ, comp, synths, etc.)
 		lsp-plugins  # pro-grade LV2/LADSPA/CLAP/VST plugin bundle
 		x42-plugins  # meters/utility + audio/video-friendly plugins
-		zam-plugins  # ZamAudio LV2/LADSPA FX (compressors, EQ, etc.)
+		zam-plugins  # ZamAudio LV2/LADSPA FX (compressors, EQ, etc.) (~40 MB)
 		mda-lv2      # classic LV2 plugin pack (bread-and-butter FX)
 		carla        # modular plugin host for LV2/VST/etc.
 
@@ -2219,8 +2219,7 @@ main_menu() {
 			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 			;;
 		21)
-
-			sudo snap install arduino
+			sudo apt install -y arduino
 			sudo snap install rpi-imager
 			;;
 		22)
