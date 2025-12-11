@@ -137,27 +137,28 @@ System Configuration
 14) Set Up SSH Server
 15) Install Cups Printing
 16) Firewall / IPTables Setup
+17) CloudFlare/Quad9 DoH DNS Setup
 
 Graphics & 3d Printing
-17) Install Blender/Gimp/Inkscape
-18) Install Freecad
-19) Install OrcaSlicer
-20) Install Repetier Server
-21) Install Arduino/RP-Imager
+18) Install Blender/Gimp/Inkscape
+19) Install Freecad
+20) Install OrcaSlicer
+21) Install Repetier Server
+22) Install Arduino/RP-Imager
 
 System Maintenance
-22) Full Applications and System Update(s)
-23) Operating System Upgrade
+23) Full Applications and System Update(s)
+24) Operating System Upgrade
 
 Backports PPA Repository
-24) Add Repository
-25) Remove Repository
-26) Add Firefox-ESR
-27) Install Thunderbird
+25) Add Repository
+26) Remove Repository
+27) Add Firefox-ESR
+28) Install Thunderbird
 
-28) Exit
+29) Exit
 
-Please select an option [1-28]:
+Please select an option [1-29]:
 ```
 
 You can run the script multiple times to change or add components.
