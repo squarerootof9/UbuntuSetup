@@ -1565,6 +1565,265 @@ iptables_secure() {
 
 }
 
+#######
+# DNS #
+#######
+
+install_cloudflare_dns() {
+	local CONF="/etc/systemd/resolved.conf"
+	local BACKUP="${CONF}.stealthdns.bak"
+
+	echo "🕵️‍♂️🔐 Enabling stealth DNS (Cloudflare + Quad9 DNS over HTTPS)..."
+
+	# Basic sanity checks
+	if ! command -v systemctl >/dev/null 2>&1; then
+		echo "❌ systemctl not found. This function assumes a systemd-based system."
+		return 1
+	fi
+
+	# Check that the unit is known at all
+	if ! systemctl list-unit-files systemd-resolved.service >/dev/null 2>&1; then
+		echo "❌ systemd-resolved.service unit not found. Not touching DNS."
+		return 1
+	fi
+
+	# Backup existing config once
+	if [[ -f "$CONF" && ! -f "$BACKUP" ]]; then
+		echo "📦 Backing up existing $CONF to $BACKUP"
+		sudo cp "$CONF" "$BACKUP" || {
+			echo "❌ Failed to create backup; aborting."
+			return 1
+		}
+	fi
+
+	echo "✍️  Writing $CONF ..."
+	sudo tee "$CONF" >/dev/null <<EOF
+[Resolve]
+DNS=1.1.1.1 9.9.9.9
+DNSOverTLS=no  # Explicitly not using DoT (DoH only)
+FallbackDNS=
+EOF
+
+	echo "🔄 Restarting systemd-resolved..."
+	if sudo systemctl restart systemd-resolved; then
+		echo "✅ Stealth DNS enabled via systemd-resolved (Cloudflare + Quad9 over TLS)."
+	else
+		echo "❌ Failed to restart systemd-resolved."
+		return 1
+	fi
+}
+
+remove_cloudflare_dns() {
+	local CONF="/etc/systemd/resolved.conf"
+	local BACKUP="${CONF}.stealthdns.bak"
+
+	echo "🧹 Removing stealth DNS settings..."
+
+	if [[ -f "$BACKUP" ]]; then
+		echo "↩️ Restoring backup $BACKUP → $CONF"
+		sudo mv "$BACKUP" "$CONF" || {
+			echo "❌ Failed to restore backup."
+			return 1
+		}
+	else
+		echo "ℹ️ No backup found; writing a minimal reset config to $CONF"
+		sudo tee "$CONF" >/dev/null <<EOF
+# Reset by remove_cloudflare_dns()
+[Resolve]
+#DNS=
+#FallbackDNS=
+#DNSOverTLS=no
+EOF
+	fi
+
+	echo "🔄 Restarting systemd-resolved..."
+	if sudo systemctl restart systemd-resolved; then
+		echo "✅ Stealth DNS settings removed; systemd-resolved restarted."
+	else
+		echo "❌ Failed to restart systemd-resolved."
+		return 1
+	fi
+}
+
+stealth_dns_nm_apply_all() {
+	local ipv4_dns="1.1.1.1 9.9.9.9"
+	local ipv6_dns="2606:4700:4700::1111 2620:fe::fe" # CF + Quad9 IPv6
+
+	if ! command -v nmcli >/dev/null 2>&1; then
+		echo "❌ nmcli not found. NetworkManager is required for this function."
+		return 1
+	fi
+
+	echo "🥷🌐 Applying stealth DNS to all NetworkManager connections..."
+	echo "    IPv4 → ${ipv4_dns}"
+	echo "    IPv6 → ${ipv6_dns}"
+	echo
+
+	nmcli -t -f NAME connection show | while IFS= read -r conn; do
+		[[ -z "$conn" ]] && continue
+		[[ "$conn" == "lo" ]] && {
+			echo "⏭️  Skipping loopback (lo)"
+			continue
+		}
+
+		# Get methods
+		local m4 m6
+		m4="$(nmcli -g ipv4.method connection show "$conn" 2>/dev/null)"
+		m6="$(nmcli -g ipv6.method connection show "$conn" 2>/dev/null)"
+
+		echo "⚙️  Connection: ${conn}"
+		echo "    ipv4.method=${m4:-<none>}  ipv6.method=${m6:-<none>}"
+
+		# IPv4: only touch if auto/manual/shared
+		case "$m4" in
+		auto | manual | shared)
+			echo "    → Setting IPv4 DNS..."
+			sudo nmcli connection modify "$conn" ipv4.dns "$ipv4_dns"
+			sudo nmcli connection modify "$conn" ipv4.ignore-auto-dns yes
+			;;
+		"")
+			echo "    → Skipping IPv4 (no IPv4 config)."
+			;;
+		*)
+			echo "    → Skipping IPv4 (method=${m4}, DNS not allowed)."
+			;;
+		esac
+
+		# IPv6: only touch if auto/manual
+		case "$m6" in
+		auto | manual)
+			echo "    → Setting IPv6 DNS..."
+			sudo nmcli connection modify "$conn" ipv6.dns "$ipv6_dns"
+			sudo nmcli connection modify "$conn" ipv6.ignore-auto-dns yes
+			;;
+		"")
+			echo "    → Skipping IPv6 (no IPv6 config)."
+			;;
+		*)
+			echo "    → Skipping IPv6 (method=${m6}, DNS not allowed)."
+			;;
+		esac
+
+		echo
+	done
+
+	echo "✅ Stealth DNS applied where supported."
+	echo ""
+	echo "ℹ️ Active connections will need to be re-connected to apply changes."
+	echo "   (You can reconnect a specific connection with:"
+	echo "    sudo nmcli connection down \"<name>\" && sudo nmcli connection up \"<name>\")"
+	echo
+	echo "View dns info with 'resolvectl status'."
+}
+
+stealth_dns_nm_reset_all() {
+	if ! command -v nmcli >/dev/null 2>&1; then
+		echo "❌ nmcli not found. NetworkManager is required for this function."
+		return 1
+	fi
+
+	echo "🧹 Resetting DNS for all NetworkManager connections to use DHCP/auto..."
+
+	nmcli -t -f NAME connection show | while IFS= read -r conn; do
+		[[ -z "$conn" ]] && continue
+		[[ "$conn" == "lo" ]] && {
+			echo "⏭️  Skipping loopback (lo)"
+			continue
+		}
+
+		local m4 m6
+		m4="$(nmcli -g ipv4.method connection show "$conn" 2>/dev/null)"
+		m6="$(nmcli -g ipv6.method connection show "$conn" 2>/dev/null)"
+
+		echo "⚙️  Connection: ${conn}"
+		echo "    ipv4.method=${m4:-<none>}  ipv6.method=${m6:-<none>}"
+
+		case "$m4" in
+		auto | manual | shared)
+			echo "    → Resetting IPv4 DNS to auto..."
+			sudo nmcli connection modify "$conn" ipv4.dns ""
+			sudo nmcli connection modify "$conn" ipv4.ignore-auto-dns no
+			;;
+		*)
+			echo "    → Skipping IPv4 reset (method=${m4})."
+			;;
+		esac
+
+		case "$m6" in
+		auto | manual)
+			echo "    → Resetting IPv6 DNS to auto..."
+			sudo nmcli connection modify "$conn" ipv6.dns ""
+			sudo nmcli connection modify "$conn" ipv6.ignore-auto-dns no
+			;;
+		*)
+			echo "    → Skipping IPv6 reset (method=${m6})."
+			;;
+		esac
+
+		echo
+	done
+
+	echo "✅ DNS reset to automatic where supported."
+	echo ""
+	echo "ℹ️ Active connections will need to be re-connected to apply changes."
+	echo "   (You can reconnect a specific connection with:"
+	echo "    sudo nmcli connection down \"<name>\" && sudo nmcli connection up \"<name>\")"
+	echo
+	echo "View dns info with 'resolvectl status'."
+}
+
+dns_menu() {
+
+	while true; do
+
+		clear
+		echo "----------------------------"
+		echo "🌐 Cloudflare DNS Menu 🌐"
+		echo "----------------------------"
+		echo "1) Add Cloudflare DNS"
+		echo "2) Remove Cloudflare DNS"
+		echo "3) 🔙 Back to Main Menu"
+		echo ""
+		read -p "Enter your choice [1-3]:" dns_choice
+
+		case "$dns_choice" in
+		1)
+			echo
+			echo "Installing Cloudflare DNS..."
+			echo
+			install_cloudflare_dns
+			stealth_dns_nm_apply_all
+			echo
+			echo "Cloudflare DNS is now enabled."
+			echo
+			echo "✅ You can verify your encrypted DNS here: https://one.one.one.one/help/"
+			echo
+			;;
+		2)
+			echo
+			echo "Removing Cloudflare DNS..."
+			echo
+			remove_cloudflare_dns
+			stealth_dns_nm_reset_all
+			echo
+			echo "Cloudflare DNS is now disabled."
+			echo
+			echo "✅ You can verify your standard DNS here: https://one.one.one.one/help/"
+			echo
+			;;
+		3)
+			main_menu
+			;;
+		*)
+			echo "Invalid option. Please try again."
+			;;
+		esac
+		pause
+	done
+}
+
+#######
+
 lock_out() {
 
 	qdbus6 org.freedesktop.ScreenSaver /ScreenSaver Lock
@@ -1616,7 +1875,7 @@ repository_remove() {
 visualstudio_add() {
 
 	# Install dependencies
-	sudo apt install -y curl
+	sudo apt install -y curl shfmt
 
 	msg_start "Adding Microsoft VS Code repository…"
 
@@ -2061,7 +2320,7 @@ dev_menu() {
 		msg_text "Core Application Setup"
 		echo "1) Development Utilities (make, etc...)"
 		echo "2) Android Studio"
-		echo "3) Visual Studio"
+		echo "3) Visual Studio Code"
 		echo "4) IntelliJ IDEA"
 		echo "5) Glade (GTK+ UI Designer)"
 		echo "6) 🔙 Back to Main Menu"
@@ -2135,27 +2394,28 @@ main_menu() {
 		echo "14) Set Up SSH Server"
 		echo "15) Install Cups Printing"
 		echo "16) Firewall / IPTables Setup"
+		echo "17) CloudFlare/Quad9 DoH DNS Setup"
 		echo $SEC_BOT
 		msg_text "Graphics & 3d Printing"
-		echo "17) Install Blender/Gimp/Inkscape"
-		echo "18) Install Freecad"
-		echo "19) Install OrcaSlicer"
-		echo "20) Install Repetier Server"
-		echo "21) Install Arduino/RP-Imager"
+		echo "18) Install Blender/Gimp/Inkscape"
+		echo "19) Install Freecad"
+		echo "20) Install OrcaSlicer"
+		echo "21) Install Repetier Server"
+		echo "22) Install Arduino/RP-Imager"
 		echo $SEC_BOT
 		msg_text "System Maintenance"
-		echo "22) Full Applications and System Update(s)"
-		echo "23) Operating System Upgrade"
+		echo "23) Full Applications and System Update(s)"
+		echo "24) Operating System Upgrade"
 		echo $SEC_BOT
 		msg_text "Backports PPA Repository"
-		echo "24) Add Repository "
-		echo "25) Remove Repository"
-		echo "26) Add Firefox-ESR"
-		echo "27) Install Thunderbird"
+		echo "25) Add Repository "
+		echo "26) Remove Repository"
+		echo "27) Add Firefox-ESR"
+		echo "28) Install Thunderbird"
 		echo $SEC_BOT
-		echo -e "${RED}28) Exit${RESET}"
+		echo -e "${RED}29) Exit${RESET}"
 		echo ""
-		read -rp "Please select an option [1-28]: " choice
+		read -rp "Please select an option [1-29]: " choice
 
 		case $choice in
 		1)
@@ -2207,40 +2467,43 @@ main_menu() {
 			iptables_secure
 			;;
 		17)
-			install_graphics
+			dns_menu
 			;;
 		18)
-			sudo snap install freecad
+			install_graphics
 			;;
 		19)
-			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
+			sudo snap install freecad
 			;;
 		20)
-			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
 			;;
 		21)
+			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+			;;
+		22)
 			sudo apt install -y arduino
 			sudo snap install rpi-imager
 			;;
-		22)
+		23)
 			update_upgrade
 			;;
-		23)
+		24)
 			update_system
 			;;
-		24)
+		25)
 			repository_add
 			;;
-		25)
+		26)
 			repository_remove
 			;;
-		26)
+		27)
 			firefox_add
 			;;
-		27)
+		28)
 			sudo snap install thunderbird
 			;;
-		28)
+		29)
 			echo "Exiting."
 			exit 0
 			;;
