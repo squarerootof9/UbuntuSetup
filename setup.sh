@@ -565,9 +565,14 @@ install_kde_plasma_desktop() {
 	sudo snap install icon-theme-breeze
 	#sudo snap install kde-frameworks-5-99-qt-5-15-7-core20
 
+	echo ""
 	echo "🚀 Applying first-boot Plasma theme settings..."
 	kde_firstboot
 	echo "✨ First-boot configuration complete."
+	echo ""
+
+	#add "always on top" (F) to window toolbar
+	kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnRight "FIAX"
 
 	cat <<EOF >~/.xinputrc
 # set by setup script
