@@ -2011,6 +2011,20 @@ EOF
 
 }
 
+visualstudio_ext_add() {
+
+	echo "➜ Adding VS Code extensions…"
+
+	while IFS= read -r ext; do
+		[[ -z "$ext" ]] && continue
+		[[ "$ext" =~ ^# ]] && continue
+		code --install-extension "$ext"
+	done <"$SCRIPT_DIR/vscode-extensions.txt"
+
+	echo "✓ VS Code extensions added."
+
+}
+
 visualstudio_remove() {
 
 	msg_start "Removing Microsoft VS Code and repository…"
@@ -2023,6 +2037,19 @@ visualstudio_remove() {
 	sudo apt update
 
 	msg_end "VS Code and repository removed."
+
+	read -r -p "Remove all VS Code user data (settings + extensions) for $USER? [y/N]: " reply
+	case "$reply" in
+	[yY] | [yY][eE][sS])
+		rm -rf ~/.vscode
+		rm -rf ~/.config/Code
+		echo "VS Code user data removed."
+		;;
+	*)
+		echo "Skipped removing VS Code user data."
+		;;
+	esac
+
 }
 
 firefox_add() {
@@ -2326,11 +2353,12 @@ dev_menu() {
 		echo "1) Development Utilities (make, etc...)"
 		echo "2) Android Studio"
 		echo "3) Visual Studio Code"
-		echo "4) IntelliJ IDEA"
-		echo "5) Glade (GTK+ UI Designer)"
-		echo "6) 🔙 Back to Main Menu"
+		echo "4) Visual Studio Code - Extensions"
+		echo "5) IntelliJ IDEA"
+		echo "6) Glade (GTK+ UI Designer)"
+		echo "7) 🔙 Back to Main Menu"
 		echo ""
-		read -rp "Please select an option [1-6]: " choice
+		read -rp "Please select an option [1-7]: " choice
 
 		case $choice in
 		1)
@@ -2344,12 +2372,15 @@ dev_menu() {
 			#sudo snap install codium --classic
 			;;
 		4)
-			sudo snap install intellij-idea-ultimate --classic
+			visualstudio_ext_add
 			;;
 		5)
-			sudo snap install glade
+			sudo snap install intellij-idea-ultimate --classic
 			;;
 		6)
+			sudo snap install glade
+			;;
+		7)
 			main_menu
 			;;
 		*)
