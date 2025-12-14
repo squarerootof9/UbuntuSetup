@@ -527,6 +527,7 @@ install_kde_plasma_desktop() {
 		ksystemlog
 		khelpcenter
 		kdf
+		kgpg
 		kpartx
 		partitionmanager
 		plasma-browser-integration
