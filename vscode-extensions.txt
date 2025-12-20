@@ -1,5 +1,6 @@
 # Core cross-platform extensions you actually use
 andreoneti.qml-formatter
+charliermarsh.ruff
 continue.continue
 davidanson.vscode-markdownlint
 foxundermoon.shell-format
@@ -9,6 +10,14 @@ ms-python.python
 ms-vscode.makefile-tools
 ms-vscode.powershell
 pycom.pymakr
+
+mads-hartmann.bash-ide-vscode
+ms-vscode.cpptools
+rust-lang.rust-analyzer
+golang.go
+dbaeumer.vscode-eslint
+redhat.vscode-yaml
+ms-azuretools.vscode-docker
 
 # Python helper extensions – installed automatically by ms-python.python
 # (you don't need these in the list unless you want to force them explicitly)
