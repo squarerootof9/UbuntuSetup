@@ -115,6 +115,10 @@ msg_text() {
 
 install_development() {
 
+	############################################
+	## This function is shared across scripts ##
+	##          Ignore duplicates             ##
+	############################################
 	echo ""
 	echo "📦 Installing Build Essentials"
 	echo ""
@@ -123,14 +127,92 @@ install_development() {
 
 	#flex bison ant	ragel lua5.4
 
+	#python3-venv python3-pip python3-dev build-essential libasound2-dev
+
 	#build-essential  libdbus-1-dev  libgeoclue-2-dev  libglib2.0-dev  libgps-dev  libsystemd-dev  meson
-	sudo apt install --no-install-recommends \
-		make cmake ninja-build automake autoconf autopoint libtool g++ pkg-config swig \
-		doxygen graphviz libltdl-dev libcurl4-openssl-dev gettext intltool \
-		python3-setuptools python3-pip python3-wheel \
-		subversion git curl ccache dpkg-dev libc6-dev \
-		libncurses-dev \
-		protobuf-compiler patch
+
+	# Core build toolchain (C/C++ friendly)
+	PKGS_BUILD_CORE=(
+		build-essential
+		make
+		g++
+		libc6-dev
+		dpkg-dev
+	)
+
+	# Autotools / build systems
+	PKGS_BUILD_SYSTEMS=(
+		cmake
+		ninja-build
+		automake
+		autoconf
+		autopoint
+		libtool
+		pkg-config
+		ccache
+	)
+
+	# Docs / diagrams
+	PKGS_DOCS=(
+		doxygen
+		graphviz
+	)
+
+	# C/C++ libs & dev headers
+	PKGS_CPP_DEPS=(
+		libcurl4-openssl-dev
+		libltdl-dev
+		libncurses-dev
+	)
+
+	# i18n / localization tooling
+	PKGS_I18N=(
+		gettext
+		intltool
+	)
+
+	# Python tooling (packaging)
+	PKGS_PYTHON=(
+		python-is-python3
+		python3-venv
+		python3-pip
+		python3-setuptools
+		python3-wheel
+		pipx
+		python3-dev
+	)
+
+	# VCS / network utilities
+	PKGS_VCS_NET=(
+		git
+		subversion
+		curl
+	)
+
+	# Codegen / interface glue
+	PKGS_CODEGEN=(
+		swig
+		protobuf-compiler
+	)
+
+	# Misc build helpers
+	PKGS_MISC=(
+		patch
+	)
+
+	all_packages=(
+		"${PKGS_BUILD_CORE[@]}"
+		"${PKGS_BUILD_SYSTEMS[@]}"
+		"${PKGS_DOCS[@]}"
+		"${PKGS_CPP_DEPS[@]}"
+		"${PKGS_I18N[@]}"
+		"${PKGS_PYTHON[@]}"
+		"${PKGS_VCS_NET[@]}"
+		"${PKGS_CODEGEN[@]}"
+		"${PKGS_MISC[@]}"
+	)
+
+	install_apps "${all_packages[@]}"
 
 	echo ""
 	echo "✅ Build Essentials Installed"
@@ -527,6 +609,7 @@ install_kde_plasma_desktop() {
 		ksystemlog
 		khelpcenter
 		kdf
+		kate
 		kgpg
 		kpartx
 		partitionmanager
@@ -761,7 +844,7 @@ update_upgrade() {
 
 	if command -v flatpak &>/dev/null; then
 		echo "📦 Updating Flatpak packages..."
-		flatpak update -y
+		sudo flatpak update -y
 	fi
 
 	if command -v brew &>/dev/null; then
@@ -813,6 +896,7 @@ install_apt_apps() {
 		smartmontools usbutils usb-modeswitch
 		sleuthkit #autopsy  mac-robber
 		gtkhash
+		libfuse2
 	)
 
 	### 🗜️ Compression Tools
@@ -879,6 +963,7 @@ EOF
 
 	### 🌐 Network Utilities
 	network_tools=(
+		arp-scan
 		net-tools
 		traceroute
 		bind9-dnsutils
@@ -896,12 +981,21 @@ EOF
 		zenmap
 	)
 
+	### 🐍 Python Packages ###
+	python_pkgs=(
+		python-is-python3
+		python3-venv
+		python3-pip
+		python3-setuptools
+		python3-wheel
+		pipx
+		#python3-bs4
+		#python3-html5lib
+		#python3-pyqtgraph #qt5 🤔 #pip install pyqtgraph PyQt6 or PySide6
+	)
+
 	### 🛠 Miscellaneous / Special Purpose
 	misc_tools=(
-		python-is-python3
-		python3-bs4
-		python3-html5lib
-		#python3-pyqtgraph #qt5 🤔 #pip install pyqtgraph PyQt6 or PySide6
 		#synaptic
 		#dotnet-sdk-9.0
 
@@ -927,11 +1021,24 @@ EOF
 		"${remote_tools[@]}"
 		"${network_tools[@]}"
 		"${nmap_tools[@]}"
+		"${python_pkgs[@]}"
 		"${misc_tools[@]}"
 	)
 
 	install_apps "${all_packages[@]}"
 
+	echo ""
+	echo "[pipx] Running: ensurepath"
+	echo ""
+
+	pipx ensurepath
+	rc=$?
+
+	echo ""
+	echo "[pipx] Result: exit code $rc"
+	echo ""
+
+	#pipx install piper-tts --include-deps
 }
 
 install_audio_studio() {
@@ -1579,7 +1686,47 @@ install_cloudflare_dns() {
 	local CONF="/etc/systemd/resolved.conf"
 	local BACKUP="${CONF}.stealthdns.bak"
 
-	echo "🕵️‍♂️🔐 Enabling stealth DNS (Cloudflare + Quad9 DNS over HTTPS)..."
+	if ! command -v cloudflared >/dev/null 2>&1; then
+		wget -O cloudflared-linux-amd64.deb \
+			https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+
+		sudo apt-get install ./cloudflared-linux-amd64.deb
+	fi
+
+	sudo tee "/etc/systemd/system/cloudflared.service" >/dev/null <<EOCONF
+[Unit]
+Description=Cloudflared DNS over HTTPS proxy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/cloudflared --config /etc/cloudflared/config.yml proxy-dns
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOCONF
+
+	sudo mkdir -p /etc/cloudflared
+	sudo tee "/etc/cloudflared/config.yml" >/dev/null <<EOCF
+# Run a local DNS proxy
+proxy-dns: true
+proxy-dns-address: 127.0.0.1
+proxy-dns-port: 53
+
+# Upstream DoH endpoints (Cloudflare)
+proxy-dns-upstream:
+  - https://1.1.1.1/dns-query
+  - https://1.0.0.1/dns-query
+EOCF
+
+	sudo systemctl daemon-reload
+	sudo systemctl enable --now cloudflared
+	sudo systemctl status cloudflared
+
+	echo "🕵️‍♂️🔐 Enabling stealth DNS (Cloudflare DNS over HTTPS)..."
 
 	# Basic sanity checks
 	if ! command -v systemctl >/dev/null 2>&1; then
@@ -1605,14 +1752,14 @@ install_cloudflare_dns() {
 	echo "✍️  Writing $CONF ..."
 	sudo tee "$CONF" >/dev/null <<EOF
 [Resolve]
-DNS=1.1.1.1 9.9.9.9
-DNSOverTLS=no  # Explicitly not using DoT (DoH only)
+DNS=127.0.0.1
+DNSOverTLS=no
 FallbackDNS=
 EOF
 
 	echo "🔄 Restarting systemd-resolved..."
 	if sudo systemctl restart systemd-resolved; then
-		echo "✅ Stealth DNS enabled via systemd-resolved (Cloudflare + Quad9 over TLS)."
+		echo "✅ Stealth DNS enabled via systemd-resolved (Cloudflare over DoH)."
 	else
 		echo "❌ Failed to restart systemd-resolved."
 		return 1
@@ -1652,8 +1799,8 @@ EOF
 }
 
 stealth_dns_nm_apply_all() {
-	local ipv4_dns="1.1.1.1 9.9.9.9"
-	local ipv6_dns="2606:4700:4700::1111 2620:fe::fe" # CF + Quad9 IPv6
+	local ipv4_dns="1.1.1.1 1.0.0.1"
+	local ipv6_dns="2606:4700:4700::1111 2606:4700:4700::1001" # CF IPv6
 
 	if ! command -v nmcli >/dev/null 2>&1; then
 		echo "❌ nmcli not found. NetworkManager is required for this function."
@@ -1828,6 +1975,41 @@ dns_menu() {
 	done
 }
 
+install_ollama() {
+
+	curl -fsSL https://ollama.com/install.sh | sh
+
+	sudo useradd -r -s /bin/false -U -m -d /usr/share/ollama ollama
+	sudo usermod -a -G ollama $(whoami)
+
+	#DEFAULT 4096 MAX 32000
+	#OLLAMA_CONTEXT_LENGTH=32000
+
+	cat >"/etc/systemd/system/ollama.service" <<EOF
+[Unit]
+Description=Ollama Service
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/ollama serve
+User=ollama
+Group=ollama
+Restart=always
+RestartSec=3
+Environment="PATH=$PATH"
+Environment="OLLAMA_CONTEXT_LENGTH=4096"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+	sudo systemctl daemon-reload
+	sudo systemctl enable ollama
+
+	pipx install piper-tts --include-deps
+
+}
+
 #######
 
 lock_out() {
@@ -1908,6 +2090,13 @@ EOF
 
 	sudo apt update
 	sudo apt install -y code
+
+	### make vscode a context menu item
+	for mime in text/plain text/markdown application/json text/x-shellscript text/x-python; do
+		xdg-mime default code.desktop "$mime" >/dev/null 2>&1 || true
+	done
+	kbuildsycoca6 --noincremental >/dev/null 2>&1 || true
+	###
 
 	msg_end "VS Code installed successfully."
 
@@ -2431,7 +2620,7 @@ main_menu() {
 		echo "14) Set Up SSH Server"
 		echo "15) Install Cups Printing"
 		echo "16) Firewall / IPTables Setup"
-		echo "17) CloudFlare/Quad9 DoH DNS Setup"
+		echo "17) CloudFlare DoH DNS Setup"
 		echo $SEC_BOT
 		msg_text "Graphics & 3d Printing"
 		echo "18) Install Blender/Gimp/Inkscape"
@@ -2560,6 +2749,9 @@ main_menu() {
 			;;
 		muse)
 			install_musecore
+			;;
+		ollama)
+			install_ollama
 			;;
 		*)
 			echo "Invalid option. Please try again."
