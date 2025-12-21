@@ -923,7 +923,7 @@ install_apt_apps() {
 	#sudo systemctl enable --now pcscd
 
 	### 🖥️ Multimedia / GUI / OBS
-	gui_apps=(
+	media_apps=(
 		obs-studio
 		obs-plugins
 		audacity
@@ -933,6 +933,7 @@ install_apt_apps() {
 		#smplayer #qt5 🤔
 
 		ffmpeg
+		imagemagick
 		yt-dlp
 		dvd+rw-tools
 
@@ -948,7 +949,7 @@ Package: mplayer-skin-blue
 Pin: release *
 Pin-Priority: -1
 EOF
-	gui_apps+=("mplayer-skins")
+	media_apps+=("mplayer-skins")
 	#########################################################
 
 	### 📱 Mobile / Flash / Embedded
@@ -1016,7 +1017,7 @@ EOF
 		"${fs_disk_tools[@]}"
 		"${compression_pkgs[@]}"
 		"${security_tools[@]}"
-		"${gui_apps[@]}"
+		"${media_apps[@]}"
 		"${embedded_tools[@]}"
 		"${remote_tools[@]}"
 		"${network_tools[@]}"
