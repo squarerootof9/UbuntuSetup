@@ -137,7 +137,7 @@ System Configuration
 14) Set Up SSH Server
 15) Install Cups Printing
 16) Firewall / IPTables Setup
-17) CloudFlare/Quad9 DoH DNS Setup
+17) CloudFlare DoH DNS Setup
 
 Graphics & 3d Printing
 18) Install Blender/Gimp/Inkscape
@@ -151,14 +151,14 @@ System Maintenance
 24) Operating System Upgrade
 
 Backports PPA Repository
-25) Add Repository
+25) Add Repository 
 26) Remove Repository
 27) Add Firefox-ESR
 28) Install Thunderbird
 
 29) Exit
 
-Please select an option [1-29]:
+Please select an option [1-29]: 
 ```
 
 You can run the script multiple times to change or add components.
