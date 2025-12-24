@@ -710,6 +710,13 @@ install_sddm() {
 
 	install_apps "${sddm[@]}"
 
+	sudo mkdir -p /etc/sddm.conf.d
+
+	sudo tee /etc/sddm.conf.d/numlock.conf >/dev/null <<EOF
+[General]
+Numlock=on
+EOF
+
 }
 
 kde_settings() {
@@ -724,6 +731,9 @@ kde_settings() {
 
 	# Single-click opens items
 	kwriteconfig6 --file kdeglobals --group "KDE" --key "SingleClick" true
+
+	# NumLock=0 (0=On, 1=Off, 2=Leave unchanged)
+	kwriteconfig6 --file kcminputrc --group Keyboard --key NumLock 0
 
 	#Virtual Keyboard
 	kwriteconfig6 --file kcmkeyboardrc --group Keyboard --key VirtualKeyboard IBusWayland
@@ -2353,6 +2363,13 @@ install_musecore() {
 
 }
 
+install_dbbrowse() {
+
+	sudo add-apt-repository -y ppa:linuxgndu/sqlitebrowser
+	sudo apt-get update
+	sudo apt-get install sqlitebrowser
+
+}
 #apt rdepends --installed libqt5core5t64
 
 #lsblk -o NAME,MODEL,SIZE,ROTA
@@ -2595,7 +2612,7 @@ main_menu() {
 		SEC_BOT=""
 		#SEC_BOT="--------------------------------------------"
 
-		echo "╭──────────────────────────────────────────╮"
+		echo "╭���─────────────────────────────────────────╮"
 		echo -e "│             ${BOLD}${CYAN}Ubuntu Setup Menu${RESET}            │"
 		echo "╰──────────────────────────────────────────╯"
 		msg_text "Core Application Setup"
@@ -2753,6 +2770,9 @@ main_menu() {
 			;;
 		ollama)
 			install_ollama
+			;;
+		dbbrowse)
+			install_dbbrowse
 			;;
 		*)
 			echo "Invalid option. Please try again."
