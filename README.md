@@ -144,7 +144,7 @@ Graphics & 3d Printing
 19) Install Freecad
 20) Install OrcaSlicer
 21) Install Repetier Server
-22) Install Arduino/RP-Imager
+22) Install RP-Imager
 
 System Maintenance
 23) Full Applications and System Update(s)
@@ -158,7 +158,7 @@ Backports PPA Repository
 
 29) Exit
 
-Please select an option [1-29]: 
+Please select an option [1-29]:
 ```
 
 You can run the script multiple times to change or add components.

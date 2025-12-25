@@ -969,7 +969,7 @@ EOF
 
 	### 🌍 Web & Remote Tools
 	remote_tools=(
-		curl wget elinks
+		curl git wget elinks
 	)
 
 	### 🌐 Network Utilities
@@ -2563,10 +2563,11 @@ dev_menu() {
 		echo "3) Visual Studio Code"
 		echo "4) Visual Studio Code - Extensions"
 		echo "5) IntelliJ IDEA"
-		echo "6) Glade (GTK+ UI Designer)"
-		echo "7) 🔙 Back to Main Menu"
+		echo "6) Arduino"
+		echo "7) Glade (GTK+ UI Designer)"
+		echo "8) 🔙 Back to Main Menu"
 		echo ""
-		read -rp "Please select an option [1-7]: " choice
+		read -rp "Please select an option [1-8]: " choice
 
 		case $choice in
 		1)
@@ -2586,9 +2587,12 @@ dev_menu() {
 			sudo snap install intellij-idea-ultimate --classic
 			;;
 		6)
-			sudo snap install glade
+			sudo apt install -y arduino
 			;;
 		7)
+			sudo snap install glade
+			;;
+		8)
 			main_menu
 			;;
 		*)
@@ -2645,7 +2649,7 @@ main_menu() {
 		echo "19) Install Freecad"
 		echo "20) Install OrcaSlicer"
 		echo "21) Install Repetier Server"
-		echo "22) Install Arduino/RP-Imager"
+		echo "22) Install RP-Imager"
 		echo $SEC_BOT
 		msg_text "System Maintenance"
 		echo "23) Full Applications and System Update(s)"
@@ -2726,7 +2730,6 @@ main_menu() {
 			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 			;;
 		22)
-			sudo apt install -y arduino
 			sudo snap install rpi-imager
 			;;
 		23)
