@@ -560,6 +560,7 @@ install_kde_plasma_desktop() {
 		plasma-dataengines-addons
 		plasma-runners-addons
 		plasma-widgets-addons
+		kwin-addons
 
 		# Appearance (themes, visuals)
 		plasma-theme-oxygen
@@ -630,9 +631,6 @@ install_kde_plasma_desktop() {
 		#qml6-module-org-kde-kirigamiaddons-settings
 		#qml6-module-qtlocation
 	)
-
-	# don't forget someday
-	#sudo apt install libreoffice
 
 	# kaccounts-providers nextcloud-desktop owncloud-client telepathy-mission-control-5
 	#kdenetwork-filesharing
@@ -1303,6 +1301,128 @@ EOF
 	#rm "$archive"
 
 	echo "✅ Etcher installed. Run with: balena-etcher"
+}
+
+install_ledger_live() {
+
+	# ---- Config ----
+	local ver="2.133.0"
+	local app="ledger-live-desktop-${ver}-linux-x86_64"
+	local archive="${app}.AppImage"
+	local url="https://download.live.ledger.com/${archive}"
+
+	local base_dir="$HOME/.local/share/ledger-live"
+	local install_dir="$base_dir/$app"
+	local cache_dir="$base_dir/_cache"
+	local cache_appimage="$cache_dir/$archive"
+
+	echo "Installing Ledger Live ${ver}..."
+
+	# ---- Deps ----
+	# We avoid FUSE by using --appimage-extract, so no libfuse2 needed here.
+	sudo apt-get update -y >/dev/null
+	sudo apt-get install -y curl ca-certificates coreutils findutils >/dev/null
+
+	mkdir -p "$base_dir" "$cache_dir"
+
+	# ---- Download (if missing) ----
+	if [[ ! -f "$cache_appimage" ]]; then
+		echo "Downloading: $url"
+		curl -L --fail -o "$cache_appimage" "$url"
+	else
+		echo "Using cached: $cache_appimage"
+	fi
+
+	chmod +x "$cache_appimage"
+
+	# ---- Extract (idempotent) ----
+	if [[ -d "$install_dir" ]]; then
+		echo "Already extracted: $install_dir"
+	else
+		echo "Extracting AppImage..."
+		(
+			cd "$base_dir"
+			# Extracts to ./squashfs-root
+			"$cache_appimage" --appimage-extract >/dev/null
+			mv -f "$base_dir/squashfs-root" "$install_dir"
+		)
+	fi
+
+	# ---- Fix chrome-sandbox (Electron) ----
+	# Find it wherever Ledger placed it.
+	local sandbox_path=""
+	sandbox_path="$(find "$install_dir" -type f -name 'chrome-sandbox' -print -quit || true)"
+	if [[ -n "$sandbox_path" ]]; then
+		echo "Fixing chrome-sandbox: $sandbox_path"
+		# Must be owned by root and setuid for the sandbox to work
+		sudo chown root:root "$sandbox_path"
+		sudo chmod 4755 "$sandbox_path"
+	else
+		echo "Note: chrome-sandbox not found (may not be required in this build)."
+	fi
+
+	# ---- Install icon (auto-discover) ----
+	# Prefer largest hicolor icon if present.
+	local icon_src=""
+	icon_src="$(find "$install_dir" \
+		-type f \( -path '*/usr/share/icons/hicolor/*/apps/*.png' -o -path '*/usr/share/pixmaps/*.png' \) \
+		-print 2>/dev/null | head -n 1 || true)"
+
+	# Put a stable user-level icon name: ledger-live.png
+	local icon_dir="$HOME/.local/share/icons/hicolor/512x512/apps"
+	local icon_dst="$icon_dir/ledger-live.png"
+
+	if [[ -n "$icon_src" ]]; then
+		mkdir -p "$icon_dir"
+		cp -f "$icon_src" "$icon_dst"
+		echo "Icon installed: $icon_dst"
+	else
+		echo "Note: Could not auto-find an icon inside AppImage."
+	fi
+
+	# ---- Create launcher in /usr/local/bin ----
+	# The extracted root should have AppRun; use it as the stable entrypoint.
+	if [[ ! -x "$install_dir/AppRun" ]]; then
+		echo "ERROR: AppRun not found/executable at: $install_dir/AppRun"
+		return 1
+	fi
+
+	sudo ln -sf "$install_dir/AppRun" /usr/local/bin/ledger-live
+
+	# ---- Desktop entry ----
+	mkdir -p "$HOME/.local/share/applications"
+	cat >"$HOME/.local/share/applications/ledger-live.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Ledger Live
+Exec=/usr/local/bin/ledger-live %U
+Icon=ledger-live
+Categories=Finance;Utility;
+Terminal=false
+StartupNotify=true
+EOF
+
+	# Refresh desktop db (optional; harmless if absent)
+	command -v update-desktop-database >/dev/null 2>&1 && update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
+
+	# 1) Install Ledger udev rules (official)
+	wget -qO- https://raw.githubusercontent.com/LedgerHQ/udev-rules/master/add_udev_rules.sh | sudo bash
+
+	# 1.5) Tighten up mode 666 to 660
+	sudo tee /etc/udev/rules.d/99-ledger-local.rules >/dev/null <<'EOF'
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="2c97", MODE="0660", GROUP="plugdev", TAG+="uaccess"
+EOF
+
+	# 2) Make sure you’re in plugdev (common target group for these rules)
+	sudo usermod -aG plugdev "$USER"
+
+	# 3) Reload rules, then unplug/replug the Ledger
+	sudo udevadm control --reload-rules
+	sudo udevadm trigger
+
+	# unplug/replug (or reboot)
+
+	echo "✅ Installed. Run: ledger-live"
 }
 
 # Function to install .deb packages
@@ -2363,13 +2483,6 @@ install_musecore() {
 
 }
 
-install_dbbrowse() {
-
-	sudo add-apt-repository -y ppa:linuxgndu/sqlitebrowser
-	sudo apt-get update
-	sudo apt-get install sqlitebrowser
-
-}
 #apt rdepends --installed libqt5core5t64
 
 #lsblk -o NAME,MODEL,SIZE,ROTA
@@ -2555,19 +2668,19 @@ dev_menu() {
 		clear
 
 		echo "╭──────────────────────────────────────────╮"
-		echo -e "│         ${BOLD}${CYAN}Development Utilities Menu${RESET}       │"
+		echo -e "│      ${BOLD}${CYAN}Development Applications Menu${RESET}       │"
 		echo "╰──────────────────────────────────────────╯"
-		msg_text "Core Application Setup"
 		echo "1) Development Utilities (make, etc...)"
 		echo "2) Android Studio"
 		echo "3) Visual Studio Code"
 		echo "4) Visual Studio Code - Extensions"
 		echo "5) IntelliJ IDEA"
-		echo "6) Arduino"
-		echo "7) Glade (GTK+ UI Designer)"
-		echo "8) 🔙 Back to Main Menu"
+		echo "6) JetBrains WebStorm"
+		echo "7) Arduino"
+		echo "8) Glade (GTK+ UI Designer)"
+		echo "9) 🔙 Back to Main Menu"
 		echo ""
-		read -rp "Please select an option [1-8]: " choice
+		read -rp "Please select an option [1-9]: " choice
 
 		case $choice in
 		1)
@@ -2587,12 +2700,15 @@ dev_menu() {
 			sudo snap install intellij-idea-ultimate --classic
 			;;
 		6)
-			sudo apt install -y arduino
+			sudo snap install webstorm --classic
 			;;
 		7)
-			sudo snap install glade
+			sudo apt install -y arduino
 			;;
 		8)
+			sudo snap install glade
+			;;
+		9)
 			main_menu
 			;;
 		*)
@@ -2645,25 +2761,26 @@ main_menu() {
 		echo "17) CloudFlare DoH DNS Setup"
 		echo $SEC_BOT
 		msg_text "Graphics & 3d Printing"
-		echo "18) Install Blender/Gimp/Inkscape"
-		echo "19) Install Freecad"
-		echo "20) Install OrcaSlicer"
-		echo "21) Install Repetier Server"
-		echo "22) Install RP-Imager"
+		echo "18) Install OpenShot"
+		echo "19) Install Blender/Gimp/Inkscape"
+		echo "20) Install Freecad"
+		echo "21) Install OrcaSlicer"
+		echo "22) Install Repetier Server"
+		echo "23) Install RP-Imager"
 		echo $SEC_BOT
 		msg_text "System Maintenance"
-		echo "23) Full Applications and System Update(s)"
-		echo "24) Operating System Upgrade"
+		echo "24) Full Applications and System Update(s)"
+		echo "25) Operating System Upgrade"
 		echo $SEC_BOT
 		msg_text "Backports PPA Repository"
-		echo "25) Add Repository "
-		echo "26) Remove Repository"
-		echo "27) Add Firefox-ESR"
-		echo "28) Install Thunderbird"
+		echo "26) Add Repository "
+		echo "27) Remove Repository"
+		echo "28) Add Firefox-ESR"
+		echo "29) Install Thunderbird"
 		echo $SEC_BOT
-		echo -e "${RED}29) Exit${RESET}"
+		echo -e "${RED}30) Exit${RESET}"
 		echo ""
-		read -rp "Please select an option [1-29]: " choice
+		read -rp "Please select an option [1-30]: " choice
 
 		case $choice in
 		1)
@@ -2718,39 +2835,42 @@ main_menu() {
 			dns_menu
 			;;
 		18)
-			install_graphics
+			openshot_add
 			;;
 		19)
-			sudo snap install freecad
+			install_graphics
 			;;
 		20)
-			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
+			sudo snap install freecad
 			;;
 		21)
-			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
 			;;
 		22)
-			sudo snap install rpi-imager
+			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 			;;
 		23)
-			update_upgrade
+			sudo snap install rpi-imager
 			;;
 		24)
-			update_system
+			update_upgrade
 			;;
 		25)
-			repository_add
+			update_system
 			;;
 		26)
-			repository_remove
+			repository_add
 			;;
 		27)
-			firefox_add
+			repository_remove
 			;;
 		28)
-			sudo snap install thunderbird
+			firefox_add
 			;;
 		29)
+			sudo snap install thunderbird
+			;;
+		30)
 			echo "Exiting."
 			exit 0
 			;;
@@ -2761,6 +2881,12 @@ main_menu() {
 		qt)
 			# 🕵🏻‍♂️ secret qt check
 			qt5check
+			;;
+		libreoffice)
+			sudo apt install libreoffice
+			;;
+		dbeaver)
+			sudo snap install dbeaver-ce --classic
 			;;
 		ffremove)
 			firefox_remove
@@ -2774,8 +2900,8 @@ main_menu() {
 		ollama)
 			install_ollama
 			;;
-		dbbrowse)
-			install_dbbrowse
+		ledger)
+			install_ledger_live
 			;;
 		*)
 			echo "Invalid option. Please try again."
