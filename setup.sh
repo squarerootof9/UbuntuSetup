@@ -80,9 +80,9 @@ BRIGHT_MAGENTA='\033[95m'
 BRIGHT_CYAN='\033[96m'
 BRIGHT_WHITE='\033[97m'
 
-confirm() {
+msg_confirm() {
 	local message="${1:-}"
-	# Usage: confirm "message" || return 1
+	# Usage: msg_confirm "message" || return 1
 	echo -en "${CYAN}$message${RESET} ${YELLOW}[Y/n]${RESET}: "
 	read -r ans
 	case "${ans,,}" in
@@ -94,7 +94,7 @@ confirm() {
 	esac
 }
 
-pause() {
+msg_pause() {
 	read -n1 -rsp $'Press any key to continue...\n'
 }
 
@@ -967,7 +967,7 @@ EOF
 
 	### 🌍 Web & Remote Tools
 	remote_tools=(
-		curl git wget elinks
+		curl git wget elinks tigervnc-viewer
 	)
 
 	### 🌐 Network Utilities
@@ -1609,22 +1609,26 @@ setup_ssh() {
 
 	# Configure firewall
 
-	WAN_IF=$(ip route | awk '/^default/{print $5; exit}') # auto-detect WAN if
+	IFACE=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+	[[ -n "$IFACE" ]] || {
+		echo "No default interface found"
+		return 1
+	}
 
 	# Ask user whether to expose it
 	echo ""
-	read -rp "Would you like to expose SSH (port 22) to the network on interface $WAN_IF? [y/N]: " reply
+	read -rp "Would you like to expose SSH (port 22) to the network on interface $IFACE? [y/N]: " reply
 	case "$reply" in
 	[yY] | [yY][eE][sS])
-		echo "🔓 Opening port 22 on interface $WAN_IF..."
+		echo "🔓 Opening port 22 on interface $IFACE..."
 
-		sudo iptables -C INPUT -i "$WAN_IF" -p tcp --dport 22 -j ACCEPT 2>/dev/null ||
-			sudo iptables -A INPUT -i "$WAN_IF" -p tcp --dport 22 -j ACCEPT
+		sudo iptables -C INPUT -i "$IFACE" -p tcp --dport 22 -j ACCEPT 2>/dev/null ||
+			sudo iptables -A INPUT -i "$IFACE" -p tcp --dport 22 -j ACCEPT
 
-		sudo ip6tables -C INPUT -i "$WAN_IF" -p tcp --dport 22 -j ACCEPT 2>/dev/null ||
-			sudo ip6tables -A INPUT -i "$WAN_IF" -p tcp --dport 22 -j ACCEPT
+		sudo ip6tables -C INPUT -i "$IFACE" -p tcp --dport 22 -j ACCEPT 2>/dev/null ||
+			sudo ip6tables -A INPUT -i "$IFACE" -p tcp --dport 22 -j ACCEPT
 
-		echo "✅ SSH port exposed on "$WAN_IF"."
+		echo "✅ SSH port exposed on "$IFACE"."
 
 		iptables_save
 
@@ -1722,7 +1726,11 @@ iptables_secure() {
 	# --- adjust these if needed ---
 	#WG_IF="firefly"
 	#WG_PORT="50120"          # WireGuard UDP port
-	WAN_IF=$(ip route | awk '/^default/{print $5; exit}') # auto-detect WAN if
+	IFACE=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+	[[ -n "$IFACE" ]] || {
+		echo "No default interface found"
+		return 1
+	}
 	# ------------------------------
 
 	# --- OpenSSH detection & optional exposure ---
@@ -1732,18 +1740,10 @@ iptables_secure() {
 		echo "✅ OpenSSH Server detected on this system."
 
 		# Ask user whether to expose it
-		read -rp "Would you like to expose SSH (port 22) to the network on interface $WAN_IF? [y/N]: " reply_ssh
+		read -rp "Would you like to expose SSH (port 22) to the network on interface $IFACE? [y/N]: " reply_ssh
 		case "$reply_ssh" in
 		[yY] | [yY][eE][sS])
-			echo "🔓 Opening port 22 on interface $WAN_IF..."
-
-			sudo iptables -C INPUT -i "$WAN_IF" -p tcp --dport 22 -j ACCEPT 2>/dev/null ||
-				sudo iptables -A INPUT -i "$WAN_IF" -p tcp --dport 22 -j ACCEPT
-
-			sudo ip6tables -C INPUT -i "$WAN_IF" -p tcp --dport 22 -j ACCEPT 2>/dev/null ||
-				sudo ip6tables -A INPUT -i "$WAN_IF" -p tcp --dport 22 -j ACCEPT
-
-			echo "✅ SSH port exposed on "$WAN_IF"."
+			iptables_ssh
 			;;
 		*)
 			echo "❌ SSH exposure canceled."
@@ -1755,18 +1755,10 @@ iptables_secure() {
 	#fi
 
 	# Ask user whether to expose mDNS
-	read -rp "Would you like to expose mDNS (port 5353) to the network on interface $WAN_IF? [y/N]: " reply_mDNS
+	read -rp "Would you like to expose mDNS (port 5353) to the network on interface $IFACE? [y/N]: " reply_mDNS
 	case "$reply_mDNS" in
 	[yY] | [yY][eE][sS])
-		echo "🔓 Opening port 5353 on interface $WAN_IF..."
-
-		sudo iptables -C INPUT -i "$WAN_IF" -p udp --dport 5353 -j ACCEPT 2>/dev/null ||
-			sudo iptables -A INPUT -i "$WAN_IF" -p udp --dport 5353 -j ACCEPT
-
-		sudo ip6tables -C INPUT -i "$WAN_IF" -p udp --dport 5353 -j ACCEPT 2>/dev/null ||
-			sudo ip6tables -A INPUT -i "$WAN_IF" -p udp --dport 5353 -j ACCEPT
-
-		echo "✅ mDNS port exposed on "$WAN_IF"."
+		iptables_mdns
 		;;
 	*)
 		echo "❌ mDNS exposure canceled."
@@ -1778,34 +1770,134 @@ iptables_secure() {
 	############
 
 	# Ask user whether to expose
-	read -rp "Would you like to be able to ping this machine from the network on interface $WAN_IF? [y/N]: " reply_ping
+	read -rp "Would you like to be able to ping this machine from the network on interface $IFACE? [y/N]: " reply_ping
 	case "$reply_ping" in
 	[yY] | [yY][eE][sS])
-		echo "🔓 Opening ping on interface $WAN_IF..."
-
-		# limit to 10 pings/sec burst 20
-		# iptables -R INPUT $(sudo iptables -L INPUT --line-numbers | awk '/icmp/ {print $1; exit}') -p icmp --icmp-type echo-request -m limit --limit 10/second --limit-burst 20 -j ACCEPT
-		# ip6tables -R INPUT $(sudo ip6tables -L INPUT --line-numbers | awk '/ipv6-icmp/ {print $1; exit}') -p ipv6-icmp --icmpv6-type echo-request -m limit --limit 10/second --limit-burst 20 -j ACCEPT
-
-		# OR: only allow ping on the WG iface and remove the global one
-
-		sudo iptables -C INPUT -i "$WAN_IF" -p icmp --icmp-type echo-request -j ACCEPT 2>/dev/null ||
-			sudo iptables -A INPUT -i "$WAN_IF" -p icmp --icmp-type echo-request -j ACCEPT
-
-		sudo ip6tables -C INPUT -i "$WAN_IF" -p ipv6-icmp --icmpv6-type echo-request -j ACCEPT 2>/dev/null ||
-			sudo ip6tables -A INPUT -i "$WAN_IF" -p ipv6-icmp --icmpv6-type echo-request -j ACCEPT
-
-		# iptables -D INPUT <line-number-of-global-icmp-rule>
-		# ip6tables -D INPUT <line-number-of-global-icmp-rule>
-
-		echo "✅ ping exposed on "$WAN_IF"."
+		iptables_ping
 		;;
 	*)
 		echo "❌ ping exposure canceled."
 		;;
 	esac
 
+	############
+	#   KDE    #
+	############
+
+	# Ask user whether to expose
+	read -rp "Would you like to be able to access this machine with KDE Connect on interface $IFACE? [y/N]: " reply_kde
+	case "$reply_kde" in
+	[yY] | [yY][eE][sS])
+		iptables_kde_connect
+		;;
+	*)
+		echo "❌ kde connect exposure canceled."
+		;;
+	esac
+
 	iptables_save
+
+}
+
+iptables_ssh() {
+
+	IFACE=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+	[[ -n "$IFACE" ]] || {
+		echo "No default interface found"
+		return 1
+	}
+
+	echo "🔓 Opening port 22 on interface $IFACE..."
+
+	sudo iptables -C INPUT -i "$IFACE" -p tcp --dport 22 -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p tcp --dport 22 -j ACCEPT
+
+	sudo ip6tables -C INPUT -i "$IFACE" -p tcp --dport 22 -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p tcp --dport 22 -j ACCEPT
+
+	echo "✅ SSH port exposed on "$IFACE"."
+
+}
+
+iptables_mdns() {
+
+	IFACE=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+	[[ -n "$IFACE" ]] || {
+		echo "No default interface found"
+		return 1
+	}
+
+	echo "🔓 Opening port 5353 on interface $IFACE..."
+
+	sudo iptables -C INPUT -i "$IFACE" -p udp --dport 5353 -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p udp --dport 5353 -j ACCEPT
+
+	sudo ip6tables -C INPUT -i "$IFACE" -p udp --dport 5353 -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p udp --dport 5353 -j ACCEPT
+
+	echo "✅ mDNS port exposed on "$IFACE"."
+
+}
+
+iptables_ping() {
+
+	IFACE=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+	[[ -n "$IFACE" ]] || {
+		echo "No default interface found"
+		return 1
+	}
+
+	echo "🔓 Opening ping on interface $IFACE..."
+
+	# limit to 10 pings/sec burst 20
+	# iptables -R INPUT $(sudo iptables -L INPUT --line-numbers | awk '/icmp/ {print $1; exit}') -p icmp --icmp-type echo-request -m limit --limit 10/second --limit-burst 20 -j ACCEPT
+	# ip6tables -R INPUT $(sudo ip6tables -L INPUT --line-numbers | awk '/ipv6-icmp/ {print $1; exit}') -p ipv6-icmp --icmpv6-type echo-request -m limit --limit 10/second --limit-burst 20 -j ACCEPT
+
+	# OR: only allow ping on the WG iface and remove the global one
+
+	sudo iptables -C INPUT -i "$IFACE" -p icmp --icmp-type echo-request -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p icmp --icmp-type echo-request -j ACCEPT
+
+	sudo ip6tables -C INPUT -i "$IFACE" -p ipv6-icmp --icmpv6-type echo-request -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p ipv6-icmp --icmpv6-type echo-request -j ACCEPT
+
+	# iptables -D INPUT <line-number-of-global-icmp-rule>
+	# ip6tables -D INPUT <line-number-of-global-icmp-rule>
+
+	echo "✅ ping exposed on "$IFACE"."
+
+}
+
+iptables_kde_connect() {
+
+	local PORT_RANGE="1714:1764"
+
+	IFACE=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+	[[ -n "$IFACE" ]] || {
+		echo "No default interface found"
+		return 1
+	}
+
+	# IPv4 rules
+	sudo iptables -C INPUT -i "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+	sudo iptables -C INPUT -i "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+
+	sudo iptables -C OUTPUT -o "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
+		sudo iptables -A OUTPUT -o "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+	sudo iptables -C OUTPUT -o "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
+		sudo iptables -A OUTPUT -o "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+
+	sudo ip6tables -C INPUT -i "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+	sudo ip6tables -C INPUT -i "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+
+	sudo ip6tables -C OUTPUT -o "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A OUTPUT -o "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+	sudo ip6tables -C OUTPUT -o "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A OUTPUT -o "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 
 }
 
@@ -2056,7 +2148,7 @@ stealth_dns_nm_reset_all() {
 	echo "View dns info with 'resolvectl status'."
 }
 
-dns_menu() {
+menu_dns() {
 
 	while true; do
 
@@ -2096,13 +2188,13 @@ dns_menu() {
 			echo
 			;;
 		3)
-			main_menu
+			menu_main
 			;;
 		*)
 			echo "Invalid option. Please try again."
 			;;
 		esac
-		pause
+		msg_pause
 	done
 }
 
@@ -2167,7 +2259,7 @@ qt5check() {
 
 repository_add() {
 	echo ""
-	confirm "Add the Kubuntu Backports PPA?" || return 1
+	msg_confirm "Add the Kubuntu Backports PPA?" || return 1
 
 	msg_start "Adding Kubuntu Backports PPA…"
 	msg_text "  (Official Kubuntu repo providing newer KDE Plasma packages)"
@@ -2180,7 +2272,7 @@ repository_add() {
 
 repository_remove() {
 	echo ""
-	confirm "Remove the Kubuntu Backports PPA?" || return 1
+	msg_confirm "Remove the Kubuntu Backports PPA?" || return 1
 
 	msg_start "Removing Kubuntu Backports PPA…"
 	msg_text "  (Returning to standard Ubuntu KDE packages)"
@@ -2427,7 +2519,7 @@ firefox_remove() {
 	msg_end "Firefox ESR and repository removed."
 }
 
-openshot_add() {
+install_openshot() {
 
 	#flatpak install flathub org.openshot.OpenShot
 
@@ -2440,7 +2532,7 @@ openshot_add() {
 	msg_end "OpenShot Video Editor installed successfully."
 }
 
-openshot_remove() {
+remove_openshot() {
 	msg_start "Removing OpenShot Video Editor and its PPA…"
 
 	sudo apt purge -y openshot-qt python3-openshot
@@ -2452,7 +2544,7 @@ openshot_remove() {
 	msg_end "OpenShot Video Editor and PPA removed."
 }
 
-androidstudio_add() {
+install_androidstudio() {
 	msg_start "Adding Android Studio PPA and installing…"
 
 	sudo add-apt-repository -y ppa:maarten-fonville/android-studio
@@ -2462,7 +2554,7 @@ androidstudio_add() {
 	msg_end "Android Studio installed successfully."
 }
 
-androidstudio_remove() {
+remove_androidstudio() {
 	msg_start "Removing Android Studio and its PPA…"
 
 	sudo apt purge -y android-studio
@@ -2496,7 +2588,7 @@ install_musecore() {
 ######       MENUs
 ################################################################################
 
-manage_java() {
+menu_java() {
 
 	while true; do
 
@@ -2540,17 +2632,17 @@ manage_java() {
 			remove_java
 			;;
 		q | Q)
-			main_menu
+			menu_main
 			;;
 		*)
 			echo "Invalid option. Please try again."
 			;;
 		esac
-		pause
+		msg_pause
 	done
 }
 
-nodejs_menu() {
+menu_nodejs() {
 
 	while true; do
 
@@ -2574,18 +2666,18 @@ nodejs_menu() {
 			remove_nodejs
 			;;
 		3)
-			main_menu
+			menu_main
 			;;
 		*)
 			echo "Invalid option. Please try again."
 			;;
 		esac
-		pause
+		msg_pause
 	done
 
 }
 
-hb_menu() {
+menu_homebrew() {
 
 	while true; do
 
@@ -2609,18 +2701,18 @@ hb_menu() {
 			remove_homebrew
 			;;
 		3)
-			main_menu
+			menu_main
 			;;
 		*)
 			echo "Invalid option. Please try again."
 			;;
 		esac
-		pause
+		msg_pause
 	done
 
 }
 
-flatpak_menu() {
+menu_flatpak() {
 
 	while true; do
 
@@ -2650,18 +2742,18 @@ flatpak_menu() {
 			sudo apt autoremove
 			;;
 		3)
-			main_menu
+			menu_main
 			;;
 		*)
 			echo "Invalid option. Please try again."
 			;;
 		esac
-		pause
+		msg_pause
 	done
 
 }
 
-dev_menu() {
+menu_dev() {
 
 	while true; do
 
@@ -2687,7 +2779,7 @@ dev_menu() {
 			install_development
 			;;
 		2)
-			androidstudio_add
+			install_androidstudio
 			;;
 		3)
 			visualstudio_add
@@ -2709,18 +2801,18 @@ dev_menu() {
 			sudo snap install glade
 			;;
 		9)
-			main_menu
+			menu_main
 			;;
 		*)
 			echo "Invalid option. Please try again."
 			;;
 		esac
-		pause
+		msg_pause
 	done
 
 }
 # Main Menu
-main_menu() {
+menu_main() {
 
 	while true; do
 
@@ -2799,19 +2891,19 @@ main_menu() {
 			install_deb_packages "https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
 			;;
 		6)
-			dev_menu
+			menu_dev
 			;;
 		7)
-			manage_java
+			menu_java
 			;;
 		8)
-			nodejs_menu
+			menu_nodejs
 			;;
 		9)
-			hb_menu
+			menu_homebrew
 			;;
 		10)
-			flatpak_menu
+			menu_flatpak
 			;;
 		11)
 			install_kde_plasma_desktop
@@ -2832,10 +2924,10 @@ main_menu() {
 			iptables_secure
 			;;
 		17)
-			dns_menu
+			menu_dns
 			;;
 		18)
-			openshot_add
+			install_openshot
 			;;
 		19)
 			install_graphics
@@ -2891,9 +2983,6 @@ main_menu() {
 		ffremove)
 			firefox_remove
 			;;
-		openshot)
-			openshot_add
-			;;
 		muse)
 			install_musecore
 			;;
@@ -2907,8 +2996,8 @@ main_menu() {
 			echo "Invalid option. Please try again."
 			;;
 		esac
-		pause
+		msg_pause
 	done
 }
 
-main_menu
+menu_main
