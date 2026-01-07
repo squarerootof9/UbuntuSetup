@@ -607,6 +607,7 @@ install_kde_plasma_desktop() {
 		kmenuedit
 		ksshaskpass
 		kwalletmanager
+		libpam-kwallet5
 		ksystemlog
 		khelpcenter
 		kdf
@@ -1755,7 +1756,7 @@ iptables_secure() {
 	#fi
 
 	# Ask user whether to expose mDNS
-	read -rp "Would you like to expose mDNS (port 5353) to the network on interface $IFACE? [y/N]: " reply_mDNS
+	read -rp "Enable mDNS (port 5353) to the network on interface $IFACE? [y/N]: " reply_mDNS
 	case "$reply_mDNS" in
 	[yY] | [yY][eE][sS])
 		iptables_mdns
@@ -1770,7 +1771,7 @@ iptables_secure() {
 	############
 
 	# Ask user whether to expose
-	read -rp "Would you like to be able to ping this machine from the network on interface $IFACE? [y/N]: " reply_ping
+	read -rp "Enable ping to this machine from the network on interface $IFACE? [y/N]: " reply_ping
 	case "$reply_ping" in
 	[yY] | [yY][eE][sS])
 		iptables_ping
@@ -1785,13 +1786,43 @@ iptables_secure() {
 	############
 
 	# Ask user whether to expose
-	read -rp "Would you like to be able to access this machine with KDE Connect on interface $IFACE? [y/N]: " reply_kde
+	read -rp "Enable access to this machine with KDE Connect on interface $IFACE? [y/N]: " reply_kde
 	case "$reply_kde" in
 	[yY] | [yY][eE][sS])
 		iptables_kde_connect
 		;;
 	*)
 		echo "❌ kde connect exposure canceled."
+		;;
+	esac
+
+	############
+	#   VNC    #
+	############
+
+	# Ask user whether to expose
+	read -rp "Enable access to this machine with VNC on interface $IFACE? [y/N]: " reply_vnc
+	case "$reply_vnc" in
+	[yY] | [yY][eE][sS])
+		iptables_vnc
+		;;
+	*)
+		echo "❌ vnc exposure canceled."
+		;;
+	esac
+
+	############
+	#   RDP    #
+	############
+
+	# Ask user whether to expose
+	read -rp "Enable access to this machine with RPD (Remote Desktop Protocol) on interface $IFACE? [y/N]: " reply_rdp
+	case "$reply_rdp" in
+	[yY] | [yY][eE][sS])
+		iptables_rdp
+		;;
+	*)
+		echo "❌ rdp exposure canceled."
 		;;
 	esac
 
@@ -1878,6 +1909,8 @@ iptables_kde_connect() {
 		return 1
 	}
 
+	echo "🔓 Opening ports 1714:1764 tcp/udp on interface $IFACE..."
+
 	# IPv4 rules
 	sudo iptables -C INPUT -i "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
 		sudo iptables -A INPUT -i "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
@@ -1898,6 +1931,60 @@ iptables_kde_connect() {
 		sudo ip6tables -A OUTPUT -o "$IFACE" -p tcp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 	sudo ip6tables -C OUTPUT -o "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT 2>/dev/null ||
 		sudo ip6tables -A OUTPUT -o "$IFACE" -p udp --dport "$PORT_RANGE" -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+
+	echo "✅ KDE Connect ports exposed on "$IFACE"."
+
+}
+
+iptables_vnc() {
+
+	IFACE=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+	[[ -n "$IFACE" ]] || {
+		echo "No default interface found"
+		return 1
+	}
+
+	echo "🔓 Opening port 5900 tcp/udp on interface $IFACE..."
+
+	sudo iptables -C INPUT -i "$IFACE" -p tcp --dport 5900 -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p tcp --dport 5900 -j ACCEPT
+
+	sudo iptables -C INPUT -i "$IFACE" -p udp --dport 5900 -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p udp --dport 5900 -j ACCEPT
+
+	sudo ip6tables -C INPUT -i "$IFACE" -p tcp --dport 5900 -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p tcp --dport 5900 -j ACCEPT
+
+	sudo ip6tables -C INPUT -i "$IFACE" -p udp --dport 5900 -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p udp --dport 5900 -j ACCEPT
+
+	echo "✅ VNC port exposed on "$IFACE"."
+
+}
+
+iptables_rdp() {
+
+	IFACE=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+	[[ -n "$IFACE" ]] || {
+		echo "No default interface found"
+		return 1
+	}
+
+	echo "🔓 Opening port 3389 tcp/udp on interface $IFACE..."
+
+	sudo iptables -C INPUT -i "$IFACE" -p tcp --dport 3389 -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p tcp --dport 3389 -j ACCEPT
+
+	sudo iptables -C INPUT -i "$IFACE" -p udp --dport 3389 -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p udp --dport 3389 -j ACCEPT
+
+	sudo ip6tables -C INPUT -i "$IFACE" -p tcp --dport 3389 -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p tcp --dport 3389 -j ACCEPT
+
+	sudo ip6tables -C INPUT -i "$IFACE" -p udp --dport 3389 -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p udp --dport 3389 -j ACCEPT
+
+	echo "✅ RPD port exposed on "$IFACE"."
 
 }
 
