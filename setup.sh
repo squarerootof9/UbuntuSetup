@@ -654,6 +654,11 @@ install_kde_plasma_desktop() {
 	echo "✨ First-boot configuration complete."
 	echo ""
 
+	mkdir -p "$HOME/.gnupg"
+	chmod 700 "$HOME/.gnupg"
+	touch "$HOME/.gnupg/gpg.conf"
+	chmod 600 "$HOME/.gnupg/gpg.conf"
+
 	#add "always on top" (F) to window toolbar
 	kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnRight "FIAX"
 
