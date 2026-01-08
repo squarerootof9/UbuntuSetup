@@ -29,12 +29,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Determine installation states
-HOMEBREW_INSTALLED=false
 JAVA_INSTALLED=false
-
-if command -v brew &>/dev/null; then
-	HOMEBREW_INSTALLED=true
-fi
 
 # Check if Java installed via Homebrew (linuxbrew)
 if command -v java &>/dev/null; then
@@ -221,7 +216,8 @@ install_development() {
 
 # Function to install Homebrew
 install_homebrew() {
-	if ! $HOMEBREW_INSTALLED; then
+
+	if ! command -v brew &>/dev/null; then
 		echo "Installing Homebrew..."
 
 		# Install dependencies
@@ -245,10 +241,10 @@ install_homebrew() {
 
 		# Evaluate Homebrew environment for the current script
 		eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-		HOMEBREW_INSTALLED=true
+
 	else
 		echo "Homebrew is already installed."
-		# Ensure brew shellenv is evaluated
+		# Ensure brew shellenv is evaluated (not sure why)
 		eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 	fi
 
@@ -330,36 +326,31 @@ install_homebrew_java() {
 	if ! $JAVA_INSTALLED; then
 		echo "Installing Java..."
 
-		if $HOMEBREW_INSTALLED; then
+		#check for brew removed
 
-			brew install openjdk
+		brew install openjdk
 
-			# Find the Java home directory
-			JAVA_HOME_DIR=$(brew --prefix openjdk)/libexec/openjdk.jdk
-			if [ ! -d "$JAVA_HOME_DIR" ]; then
-				JAVA_HOME_DIR=$(brew --prefix openjdk)
-			fi
-
-			# Add JAVA_HOME to .bashrc with precise comments
-			if ! grep -qxF '# Java configuration' "$HOME/.bashrc"; then
-				{
-					echo '# Java configuration'
-					echo 'export LC_ALL=en_US.UTF-8'
-					echo "export JAVA_HOME=$JAVA_HOME_DIR"
-					echo 'export PATH=$JAVA_HOME/bin:$PATH'
-				} >>"$HOME/.bashrc"
-			fi
-
-			# Source the updated .bashrc
-			source "$HOME/.bashrc"
-			JAVA_INSTALLED=true
-			echo "Java has been installed and configured."
-			echo "Please restart your terminal for the changes to take effect."
-
-		else
-
-			echo "Java install requires Homebrew"
+		# Find the Java home directory
+		JAVA_HOME_DIR=$(brew --prefix openjdk)/libexec/openjdk.jdk
+		if [ ! -d "$JAVA_HOME_DIR" ]; then
+			JAVA_HOME_DIR=$(brew --prefix openjdk)
 		fi
+
+		# Add JAVA_HOME to .bashrc with precise comments
+		if ! grep -qxF '# Java configuration' "$HOME/.bashrc"; then
+			{
+				echo '# Java configuration'
+				echo 'export LC_ALL=en_US.UTF-8'
+				echo "export JAVA_HOME=$JAVA_HOME_DIR"
+				echo 'export PATH=$JAVA_HOME/bin:$PATH'
+			} >>"$HOME/.bashrc"
+		fi
+
+		# Source the updated .bashrc
+		source "$HOME/.bashrc"
+		JAVA_INSTALLED=true
+		echo "Java has been installed and configured."
+		echo "Please restart your terminal for the changes to take effect."
 
 	else
 		echo "Java is already installed."
@@ -403,7 +394,7 @@ build_kde() {
 	curl 'https://invent.kde.org/sdk/kde-builder/-/raw/master/scripts/initial_setup.sh' >initial_setup.sh
 	chmod +x initial_setup.sh
 	bash initial_setup.sh
-	#source ~/kde/env.sh
+	#source $HOME/kde/env.sh
 	kde-builder --generate-config
 	kde-builder --install-distro-packages
 	kde-builder kcalc
@@ -465,22 +456,22 @@ remove_nodejs() {
 
 	# 1) Remove NVM directory (safe if missing)
 	if [ -d "$HOME/.nvm" ]; then
-		echo " - Removing ~/.nvm"
+		echo " - Removing $HOME/.nvm"
 		rm -rf "$HOME/.nvm"
 	else
-		echo " - ~/.nvm already removed"
+		echo " - $HOME/.nvm already removed"
 	fi
 
 	# 2) Remove npm cache
 	if [ -d "$HOME/.npm" ]; then
-		echo " - Removing ~/.npm cache"
+		echo " - Removing $HOME/.npm cache"
 		rm -rf "$HOME/.npm"
 	else
-		echo " - ~/.npm cache already removed"
+		echo " - $HOME/.npm cache already removed"
 	fi
 
-	# 3) Remove NVM-related lines from ~/.bashrc
-	echo " - Cleaning up ~/.bashrc entries"
+	# 3) Remove NVM-related lines from $HOME/.bashrc
+	echo " - Cleaning up $HOME/.bashrc entries"
 
 	# Patterns to remove (quiet if absent)
 	sed -i '/export NVM_DIR=.*/d' "$HOME/.bashrc"
@@ -662,7 +653,7 @@ install_kde_plasma_desktop() {
 	#add "always on top" (F) to window toolbar
 	kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnRight "FIAX"
 
-	cat <<EOF >~/.xinputrc
+	cat <<EOF >"$HOME/.xinputrc"
 # set by setup script
 run_im none
 EOF
@@ -743,7 +734,7 @@ kde_settings() {
 	kwriteconfig6 --file kcmkeyboardrc --group Keyboard --key VirtualKeyboard IBusWayland
 
 	# Dolphin startup location and behavior
-	kwriteconfig6 --file dolphinrc --group "General" --key "HomeUrl" "file:///home/$USER"
+	kwriteconfig6 --file dolphinrc --group "General" --key "HomeUrl" "file:///$HOME"
 	kwriteconfig6 --file dolphinrc --group "General" --key "RememberOpenedTabs" false
 	kwriteconfig6 --file dolphinrc --group "General" --key "ShowHomeUrlOnStartup" true
 
@@ -777,8 +768,8 @@ kde_settings() {
 
 kde_firstboot() {
 
-	mkdir -p ~/.config/autostart
-	cat <<EOF >~/.config/autostart/plasma-firstboot.desktop
+	mkdir -p "$HOME/.config/autostart"
+	cat <<EOF >"$HOME/.config/autostart/plasma-firstboot.desktop"
 [Desktop Entry]
 Type=Application
 Exec=/usr/local/bin/plasma-firstboot.sh
@@ -804,7 +795,7 @@ kwriteconfig6 --file kdeglobals --group "KDE" --key "SingleClick" true
 
 # --- CLEANUP ---
 # Remove autostart entry so this only runs once
-rm -f ~/.config/autostart/plasma-firstboot.desktop
+rm -f $HOME/.config/autostart/plasma-firstboot.desktop
 
 # Remove this script if you prefer to keep the system clean
 # Comment this line out if you want to re-run or debug later:
@@ -1293,8 +1284,8 @@ install_etcher_portable() {
 	sudo ln -sf "$base_dir/$downloadFile/balena-etcher" /usr/local/bin/balena-etcher
 
 	# Desktop entry
-	mkdir -p ~/.local/share/applications
-	cat <<EOF >~/.local/share/applications/balena-etcher.desktop
+	mkdir -p "$HOME/.local/share/applications"
+	cat <<EOF >"$HOME/.local/share/applications/balena-etcher.desktop"
 [Desktop Entry]
 Type=Application
 Name=Balena Etcher
@@ -2546,8 +2537,8 @@ visualstudio_remove() {
 	read -r -p "Remove all VS Code user data (settings + extensions) for $USER? [y/N]: " reply
 	case "$reply" in
 	[yY] | [yY][eE][sS])
-		rm -rf ~/.vscode
-		rm -rf ~/.config/Code
+		rm -rf "$HOME/.vscode"
+		rm -rf "$HOME/.config/Code"
 		echo "VS Code user data removed."
 		;;
 	*)
