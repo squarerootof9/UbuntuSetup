@@ -140,25 +140,26 @@ System Configuration
 17) CloudFlare DoH DNS Setup
 
 Graphics & 3d Printing
-18) Install Blender/Gimp/Inkscape
-19) Install Freecad
-20) Install OrcaSlicer
-21) Install Repetier Server
-22) Install RP-Imager
+18) Install OpenShot
+19) Install Blender/Gimp/Inkscape
+20) Install Freecad
+21) Install OrcaSlicer
+22) Install Repetier Server
+23) Install RP-Imager
 
 System Maintenance
-23) Full Applications and System Update(s)
-24) Operating System Upgrade
+24) Full Applications and System Update(s)
+25) Operating System Upgrade
 
 Backports PPA Repository
-25) Add Repository 
-26) Remove Repository
-27) Add Firefox-ESR
-28) Install Thunderbird
+26) Add Repository 
+27) Remove Repository
+28) Add Firefox-ESR
+29) Install Thunderbird
 
-29) Exit
+30) Exit
 
-Please select an option [1-29]:
+Please select an option [1-30]: 
 ```
 
 You can run the script multiple times to change or add components.
