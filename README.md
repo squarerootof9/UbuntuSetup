@@ -138,28 +138,29 @@ System Configuration
 15) Install Cups Printing
 16) Firewall / IPTables Setup
 17) CloudFlare DoH DNS Setup
+18) Manage Wireguard VPN Client
 
 Graphics & 3d Printing
-18) Install OpenShot
-19) Install Blender/Gimp/Inkscape
-20) Install Freecad
-21) Install OrcaSlicer
-22) Install Repetier Server
-23) Install RP-Imager
+19) Install OpenShot
+20) Install Blender/Gimp/Inkscape
+21) Install Freecad
+22) Install OrcaSlicer
+23) Install Repetier Server
+24) Install RP-Imager
 
 System Maintenance
-24) Full Applications and System Update(s)
-25) Operating System Upgrade
+25) Full Applications and System Update(s)
+26) Operating System Upgrade
 
 Backports PPA Repository
-26) Add Repository 
-27) Remove Repository
-28) Add Firefox-ESR
-29) Install Thunderbird
+27) Add Repository 
+28) Remove Repository
+29) Add Firefox-ESR
+30) Install Thunderbird
 
-30) Exit
+31) Exit
 
-Please select an option [1-30]: 
+Please select an option [1-31]: 
 ```
 
 You can run the script multiple times to change or add components.
