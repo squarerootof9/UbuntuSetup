@@ -2318,9 +2318,9 @@ menu_dns() {
 	while true; do
 
 		clear
-		echo "----------------------------"
-		echo "🌐 Cloudflare DNS Menu 🌐"
-		echo "----------------------------"
+		echo "╭──────────────────────────────────────────╮"
+		echo -e "│       ${BOLD}${CYAN}🌐 Cloudflare DNS Menu 🌐${RESET}          │"
+		echo "╰──────────────────────────────────────────╯"
 		echo "1) Add Cloudflare DNS"
 		echo "2) Remove Cloudflare DNS"
 		echo "3) 🔙 Back to Main Menu"
@@ -2362,6 +2362,267 @@ menu_dns() {
 		msg_pause
 	done
 }
+
+#########
+## VPN ##
+#########
+
+# --- WireGuard helpers (wg-quick + Ubuntu AppArmor workaround) ----------------
+
+_vpn_need_name() {
+	local name="$1"
+	if [[ -z "$name" ]]; then
+		echo "usage: $2 <name>"
+		return 2
+	fi
+	# basic sanity: keep interface names simple
+	if [[ ! "$name" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
+		echo "invalid name: '$name' (use letters/numbers/._-)"
+		return 2
+	fi
+	return 0
+}
+
+vpn_setup() {
+
+	local dir_prefix=""
+
+	if [[ "$(uname -s)" == "Darwin" ]]; then
+		local dir_prefix="/usr/local"
+	fi
+
+	local name="$1"
+	local src="${2:-${name}.conf}"
+	local dst="${dir_prefix}/etc/wireguard/${name}.conf"
+
+	_vpn_need_name "$name" "vpn_setup" || return $?
+
+	if [[ ! -f "$src" ]]; then
+		echo "✗ missing config: $src"
+		return 2
+	fi
+
+	echo "▶ Setting up WireGuard profile: $name"
+	echo "  - source: $src"
+	echo "  - target: $dst"
+
+	# REMOVE FOR MAC
+	# START AppArmor workaround for wg-quick + uutils coreutils 'stat' mount table reads START
+
+	local aa_file="/etc/apparmor.d/local/wg-quick"
+	local aa_tmp
+	aa_tmp="$(mktemp)"
+
+	cat >"$aa_tmp" <<'EOF'
+# workaround for https://bugs.launchpad.net/ubuntu/+source/apparmor/+bug/2127851
+file r @{PROC}/@{pid}/mounts,
+file r @{PROC}/@{pid}/mountinfo,
+EOF
+
+	sudo mkdir -p /etc/apparmor.d/local
+
+	if ! sudo test -f "$aa_file" || ! sudo cmp -s "$aa_tmp" "$aa_file"; then
+		echo "  - applying AppArmor workaround (wg-quick/stat)"
+		sudo tee "$aa_file" >/dev/null <"$aa_tmp"
+		sudo systemctl reload apparmor
+	else
+		echo "  - AppArmor workaround already present"
+	fi
+
+	rm -f "$aa_tmp"
+
+	# END AppArmor workaround END
+
+	# Install config securely
+	sudo mkdir -p "${dir_prefix}/etc/wireguard"
+	sudo chmod 700 "${dir_prefix}/etc/wireguard"
+
+	if sudo test -f "$dst" && sudo cmp -s "$src" "$dst"; then
+		echo "  - config already installed (no change)"
+	else
+		if [[ "$(uname -s)" == "Darwin" ]]; then
+			echo "  - installing config (root:wheel, 600)"
+			sudo install -o root -g wheel -m 600 "$src" "$dst"
+		else
+			echo "  - installing config (root:root, 600)"
+			sudo install -o root -g root -m 600 "$src" "$dst"
+		fi
+	fi
+
+	echo "✓ Setup complete for: $name"
+}
+
+vpn_up() {
+	local name="$1"
+	_vpn_need_name "$name" "vpn_up" || return $?
+
+	if ip link show dev "$name" >/dev/null 2>&1; then
+		echo "✓ $name is already up"
+		return 0
+	fi
+
+	echo "▶ Bringing up: $name"
+	sudo wg-quick up "$name"
+}
+
+vpn_down() {
+	local name="$1"
+	_vpn_need_name "$name" "vpn_down" || return $?
+
+	echo "▶ Bringing down: $name"
+
+	local out rc
+	out="$(sudo wg-quick down "$name" 2>&1)"
+	rc=$?
+
+	# Graceful no-op cases (already down / doesn't exist / nothing to do)
+	if [[ $rc -eq 0 ]] ||
+		grep -qiE 'does not exist|not found|Cannot find device|No such device|Unknown device|is not a WireGuard interface' <<<"$out"; then
+		echo "✓ Down: $name"
+		return 0
+	fi
+
+	# Unexpected error: show output and return non-zero
+	echo "$out" >&2
+	echo "✗ Failed to bring down: $name" >&2
+	return $rc
+}
+
+# Config dir: keep your manual toggle if you want, but put it in ONE place.
+# Linux: /etc/wireguard
+# macOS (brew): /usr/local/etc/wireguard   (or /opt/homebrew/etc/wireguard on Apple Silicon)
+WG_CONF_DIR="${WG_CONF_DIR:-/usr/local/etc/wireguard}"
+
+_vpn_find_iface() {
+	local name="$1"
+	local conf="${WG_CONF_DIR}/${name}.conf"
+
+	# 1) Linux/common case: interface name == profile name
+	if sudo wg show "$name" >/dev/null 2>&1; then
+		echo "$name"
+		return 0
+	fi
+
+	# 2) macOS case: interface is utunX. Match by interface public key.
+	if ! sudo test -r "$conf"; then
+		return 1
+	fi
+
+	local priv pub interfaces iface iface_pub
+	priv="$(sudo awk -F= '/^[[:space:]]*PrivateKey[[:space:]]*=/{gsub(/[[:space:]]/,"",$2); print $2; exit}' "$conf")"
+	[[ -n "$priv" ]] || return 1
+
+	# Fix common missing base64 padding (43 -> 44)
+	if [[ ${#priv} -eq 43 ]]; then
+		priv="${priv}="
+	fi
+
+	# Validate length (WireGuard base64 key should be 44 chars)
+	if [[ ${#priv} -ne 44 ]]; then
+		echo "✗ Invalid PrivateKey length in $conf (${#priv} chars, expected 44)."
+		return 1
+	fi
+
+	pub="$(printf '%s' "$priv" | wg pubkey 2>/dev/null)" || return 1
+	[[ -n "$pub" ]] || return 1
+
+	interfaces="$(sudo wg show interfaces 2>/dev/null || true)"
+	for iface in $interfaces; do
+		# "wg show <iface> public-key" exists on most installs; fallback to parsing.
+		iface_pub="$(sudo wg show "$iface" public-key 2>/dev/null ||
+			sudo wg show "$iface" 2>/dev/null | awk -F': ' '/public key:/{print $2; exit}')"
+		if [[ "$iface_pub" == "$pub" ]]; then
+			echo "$iface"
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+vpn_status() {
+	local name="$1"
+	_vpn_need_name "$name" "vpn_status" || return $?
+
+	local iface=""
+	iface="$(_vpn_find_iface "$name" 2>/dev/null || true)"
+
+	echo "▶ Status: $name"
+	if [[ -z "$iface" ]]; then
+		echo "  - link: DOWN"
+		return 0
+	fi
+
+	if [[ "$iface" != "$name" ]]; then
+		echo "  - interface: $iface (profile: $name)"
+	else
+		echo "  - interface: $iface"
+	fi
+
+	sudo wg show "$iface" || true
+	# Optional: show IP without getting fancy; only tiny branching
+	if command -v ip >/dev/null 2>&1; then
+		ip -brief addr show dev "$iface" 2>/dev/null || true
+	elif command -v ifconfig >/dev/null 2>&1; then
+		ifconfig "$iface" 2>/dev/null | awk '/inet /{print $2}' | head -n1 | awk '{print "  - ip: " $1}'
+	fi
+}
+
+menu_vpn() {
+	local default_name="${1:-}"
+	local name="${default_name:-}"
+
+	while true; do
+		clear
+		echo "╭──────────────────────────────────────────╮"
+		echo -e "│       ${BOLD}${CYAN}🌐       VPN Menu      🌐${RESET}          │"
+		echo "╰──────────────────────────────────────────╯"
+		echo "Profile: ${name:-<not set>}"
+		echo
+		echo "1) Set/Change profile name"
+		echo "2) Setup wireguard client (install config + AppArmor workaround)"
+		echo "3) START wireguard"
+		echo "4) STOP wireguard"
+		echo "5) Status"
+		echo "6) 🔙 Back to Main Menu"
+		echo
+		read -r -p "Enter your choice [1-6]: " vpn_choice
+
+		case "$vpn_choice" in
+		1)
+			read -r -p "Enter profile name (interface/config base name): " name
+			;;
+		2)
+			if [[ -z "$name" ]]; then echo "✗ set a profile name first (option 1)"; else vpn_setup "$name"; fi
+			;;
+		3)
+			if [[ -z "$name" ]]; then echo "✗ set a profile name first (option 1)"; else vpn_up "$name"; fi
+			;;
+		4)
+			if [[ -z "$name" ]]; then echo "✗ set a profile name first (option 1)"; else vpn_down "$name"; fi
+			;;
+		5)
+			if [[ -z "$name" ]]; then echo "✗ set a profile name first (option 1)"; else vpn_status "$name"; fi
+			;;
+		6)
+			menu_main
+			return 0
+			;;
+		*)
+			echo "Invalid option."
+			;;
+		esac
+
+		# Use your existing pause() if you already have one in setup.sh
+		if command -v pause >/dev/null 2>&1; then
+			pause
+		else
+			read -r -p "Press Enter to continue..." _
+		fi
+	done
+}
+
+## AI ##
 
 install_ollama() {
 
@@ -3025,28 +3286,29 @@ menu_main() {
 		echo "15) Install Cups Printing"
 		echo "16) Firewall / IPTables Setup"
 		echo "17) CloudFlare DoH DNS Setup"
+		echo "18) Manage Wireguard VPN Client"
 		echo $SEC_BOT
 		msg_text "Graphics & 3d Printing"
-		echo "18) Install OpenShot"
-		echo "19) Install Blender/Gimp/Inkscape"
-		echo "20) Install Freecad"
-		echo "21) Install OrcaSlicer"
-		echo "22) Install Repetier Server"
-		echo "23) Install RP-Imager"
+		echo "19) Install OpenShot"
+		echo "20) Install Blender/Gimp/Inkscape"
+		echo "21) Install Freecad"
+		echo "22) Install OrcaSlicer"
+		echo "23) Install Repetier Server"
+		echo "24) Install RP-Imager"
 		echo $SEC_BOT
 		msg_text "System Maintenance"
-		echo "24) Full Applications and System Update(s)"
-		echo "25) Operating System Upgrade"
+		echo "25) Full Applications and System Update(s)"
+		echo "26) Operating System Upgrade"
 		echo $SEC_BOT
 		msg_text "Backports PPA Repository"
-		echo "26) Add Repository "
-		echo "27) Remove Repository"
-		echo "28) Add Firefox-ESR"
-		echo "29) Install Thunderbird"
+		echo "27) Add Repository "
+		echo "28) Remove Repository"
+		echo "29) Add Firefox-ESR"
+		echo "30) Install Thunderbird"
 		echo $SEC_BOT
-		echo -e "${RED}30) Exit${RESET}"
+		echo -e "${RED}31) Exit${RESET}"
 		echo ""
-		read -rp "Please select an option [1-30]: " choice
+		read -rp "Please select an option [1-31]: " choice
 
 		case $choice in
 		1)
@@ -3101,42 +3363,46 @@ menu_main() {
 			menu_dns
 			;;
 		18)
-			install_openshot
+			#menu_vpn "$1"
+			menu_vpn
 			;;
 		19)
-			install_graphics
+			install_openshot
 			;;
 		20)
-			sudo snap install freecad
+			install_graphics
 			;;
 		21)
-			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
+			sudo snap install freecad
 			;;
 		22)
-			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
+			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
 			;;
 		23)
-			sudo snap install rpi-imager
+			install_deb_packages "https://download1.repetier.com/files/server/debian-amd64/Repetier-Server-1.4.16-Linux.deb"
 			;;
 		24)
-			update_upgrade
+			sudo snap install rpi-imager
 			;;
 		25)
-			update_system
+			update_upgrade
 			;;
 		26)
-			repository_add
+			update_system
 			;;
 		27)
-			repository_remove
+			repository_add
 			;;
 		28)
-			firefox_add
+			repository_remove
 			;;
 		29)
-			sudo snap install thunderbird
+			firefox_add
 			;;
 		30)
+			sudo snap install thunderbird
+			;;
+		31)
 			echo "Exiting."
 			exit 0
 			;;
