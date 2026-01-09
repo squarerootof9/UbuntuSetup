@@ -2935,10 +2935,11 @@ menu_dev() {
 		echo "6) JetBrains WebStorm"
 		echo "7) Arduino"
 		echo "8) Glade (GTK+ UI Designer)"
-		echo "9) Setup GIT ssh signing/authentication keys"
-		echo "10) 🔙 Back to Main Menu"
+		echo "9) Deploy bash shell tools → ~/.bash_aliases"
+		echo "10) Setup GIT ssh signing/authentication keys"
+		echo "11) 🔙 Back to Main Menu"
 		echo ""
-		read -rp "Please select an option [1-10]: " choice
+		read -rp "Please select an option [1-11]: " choice
 
 		case $choice in
 		1)
@@ -2967,9 +2968,13 @@ menu_dev() {
 			sudo snap install glade
 			;;
 		9)
-			setup_git_ssh_signing
+			# Copy examples only if the target file doesn't exist yet
+			[[ -f "$HOME/.bash_aliases" ]] || cp --update=none "./bash_aliases.example" "$HOME/.bash_aliases"
 			;;
 		10)
+			setup_git_ssh_signing
+			;;
+		11)
 			menu_main
 			;;
 		*)
