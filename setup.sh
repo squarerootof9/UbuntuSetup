@@ -548,6 +548,7 @@ install_kde_plasma_desktop() {
 
 		# Widgets, calendar, engine add-ons
 		plasma-calendar-addons
+		qt6-base-dev # needed for x86_64-linux-gnu-qtpaths6 by plasma-calendar-addons)
 		plasma-dataengines-addons
 		plasma-runners-addons
 		plasma-widgets-addons
@@ -1043,6 +1044,8 @@ EOF
 	echo ""
 	echo "[pipx] Result: exit code $rc"
 	echo ""
+
+	firefox_policy_install_addons
 
 	#pipx install piper-tts --include-deps
 }
@@ -1743,6 +1746,44 @@ EOF
 	echo ""
 
 	#git log --show-signature -1 || true
+}
+
+iptables_reset() {
+
+	echo ">>> Flushing all iptables rules and allowing all traffic (IPv4 + IPv6)"
+
+	# IPv4
+	sudo iptables -F
+	sudo iptables -X
+	sudo iptables -t nat -F
+	sudo iptables -t nat -X
+	sudo iptables -t mangle -F
+	sudo iptables -t mangle -X
+	sudo iptables -t raw -F
+	sudo iptables -t raw -X
+
+	sudo iptables -P INPUT ACCEPT
+	sudo iptables -P FORWARD ACCEPT
+	sudo iptables -P OUTPUT ACCEPT
+
+	# IPv6 (if enabled)
+	sudo ip6tables -F
+	sudo ip6tables -X
+	sudo ip6tables -t nat -F 2>/dev/null || true
+	sudo ip6tables -t nat -X 2>/dev/null || true
+	sudo ip6tables -t mangle -F
+	sudo ip6tables -t mangle -X
+	sudo ip6tables -t raw -F
+	sudo ip6tables -t raw -X
+
+	sudo ip6tables -P INPUT ACCEPT
+	sudo ip6tables -P FORWARD ACCEPT
+	sudo ip6tables -P OUTPUT ACCEPT
+
+	echo ">>> All rules cleared. Everything is now allowed."
+
+	iptables_save
+
 }
 
 iptables_flush() {
@@ -2931,6 +2972,48 @@ EOF
 
 }
 
+firefox_policy_install_addons() {
+
+	#https://mozilla.github.io/policy-templates/
+
+	# AMO "latest" endpoints (not pinned to a specific file build)
+	local -a addon_urls=(
+		"https://addons.mozilla.org/firefox/downloads/latest/adblock-for-youtube/latest.xpi"
+		"https://addons.mozilla.org/firefox/downloads/latest/privacy-badger17/latest.xpi"
+	)
+
+	local policy_dir="/etc/firefox/policies"
+
+	if [[ "$(uname -s)" == "Darwin" ]]; then
+		policy_dir="/Applications/Firefox.app/Contents/Resources/distribution"
+	fi
+
+	sudo mkdir -p "$policy_dir"
+
+	local policy_file="$policy_dir/policies.json"
+	# Backup if it exists (keeps your scripts idempotent & reversible)
+	if sudo test -f "$policy_file"; then
+		sudo cp -a "$policy_file" "$policy_file.bak.$(date +%F_%H%M%S)"
+	fi
+
+	# Write a minimal policies.json that installs these extensions
+	sudo tee "$policy_file" >/dev/null <<JSON
+{
+  "policies": {
+    "Extensions": {
+      "Install": [
+        "${addon_urls[0]}",
+        "${addon_urls[1]}"
+      ]
+    }
+  }
+}
+JSON
+
+	echo "✅ Wrote $policy_file"
+	echo "   Restart Firefox to apply (the add-ons install on startup)."
+}
+
 firefox_remove() {
 	msg_start "Removing Firefox ESR and Mozilla repository…"
 
@@ -3431,6 +3514,9 @@ menu_main() {
 			;;
 		ledger)
 			install_ledger_live
+			;;
+		iptablesreset)
+			iptables_reset
 			;;
 		*)
 			echo "Invalid option. Please try again."
