@@ -1014,6 +1014,9 @@ EOF
 
 		#Classic Mesa/GPU OpenGL helper tools:
 		mesa-utils mesa-utils-bin
+		mesa-va-drivers
+		#radeontop nvidia-utils-580 intel-gpu-tools
+
 
 		vulkan-tools wayland-utils
 	)
