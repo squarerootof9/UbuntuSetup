@@ -913,6 +913,7 @@ install_apt_apps() {
 		7zip-rar
 		bzip2
 		xz-utils
+		rpm2cpio
 	)
 
 	### 💾 File System & Disk Tools
@@ -965,7 +966,11 @@ EOF
 
 	### 🌍 Web & Remote Tools
 	remote_tools=(
-		curl git wget elinks tigervnc-viewer
+		curl git wget tigervnc-viewer
+	)
+
+	cli_apps=(
+		elinks iptraf twin irssi
 	)
 
 	### 🌐 Network Utilities
@@ -1017,7 +1022,6 @@ EOF
 		mesa-va-drivers
 		#radeontop nvidia-utils-580 intel-gpu-tools
 
-
 		vulkan-tools wayland-utils
 	)
 
@@ -1029,6 +1033,7 @@ EOF
 		"${media_apps[@]}"
 		"${embedded_tools[@]}"
 		"${remote_tools[@]}"
+		"${cli_apps[@]}"
 		"${network_tools[@]}"
 		"${nmap_tools[@]}"
 		"${python_pkgs[@]}"
@@ -1110,7 +1115,7 @@ install_audio_studio() {
 	systemctl --user restart pipewire
 
 	msg_start "Adding 'Multimedia (LSP)' category to plasma menu."
-	menu_items
+	desktop_menu_category
 	msg_start "Setting JACK apps to use PipeWire's pw-jack shim instead of expecting a real jackd daemon."
 	echo ""
 	jackify_dir_desktops /usr/share/applications
@@ -1178,7 +1183,7 @@ jackify_desktop_exec() {
 	sudo sed -i -E 's|^Exec=(pw-jack[[:space:]]+)?(.+)$|Exec=pw-jack \2|' "$file"
 }
 
-menu_items() {
+desktop_menu_category() {
 
 	# Desktop entry
 	sudo mkdir -p /usr/share/extra-xdg-menus
