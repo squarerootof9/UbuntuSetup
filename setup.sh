@@ -143,6 +143,9 @@ install_development() {
 		autoconf
 		autopoint
 		libtool
+		libtool-bin
+		texinfo
+		help2man
 		pkg-config
 		ccache
 	)
