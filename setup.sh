@@ -3290,11 +3290,12 @@ menu_dev() {
 		echo "6) JetBrains WebStorm"
 		echo "7) Arduino"
 		echo "8) Glade (GTK+ UI Designer)"
-		echo "9) Deploy bash shell tools → ~/.bash_aliases"
-		echo "10) Setup GIT ssh signing/authentication keys"
-		echo "11) 🔙 Back to Main Menu"
+		echo "9) Flutter/Dart"
+		echo "10) Deploy bash shell tools → ~/.bash_aliases"
+		echo "11) Setup GIT ssh signing/authentication keys"
+		echo "12) 🔙 Back to Main Menu"
 		echo ""
-		read -rp "Please select an option [1-11]: " choice
+		read -rp "Please select an option [1-12]: " choice
 
 		case $choice in
 		1)
@@ -3323,13 +3324,18 @@ menu_dev() {
 			sudo snap install glade
 			;;
 		9)
+			sudo snap install flutter --classic
+			flutter --version
+			dart --version
+			;;
+		10)
 			# Copy examples only if the target file doesn't exist yet
 			[[ -f "$HOME/.bash_aliases" ]] || cp --update=none "./bash_aliases.example" "$HOME/.bash_aliases"
 			;;
-		10)
+		11)
 			setup_git_ssh_signing
 			;;
-		11)
+		12)
 			menu_main
 			;;
 		*)
@@ -3525,6 +3531,13 @@ menu_main() {
 			;;
 		ledger)
 			install_ledger_live
+			;;
+		brave)
+			sudo apt install curl
+			sudo curl -fsSLo /usr/share/keyrings/brave-browser-archive-keyring.gpg https://brave-browser-apt-release.s3.brave.com/brave-browser-archive-keyring.gpg
+			echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" | sudo tee /etc/apt/sources.list.d/brave-browser-release.list
+			sudo apt update
+			sudo apt install brave-browser
 			;;
 		iptablesreset)
 			iptables_reset
