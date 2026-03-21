@@ -572,6 +572,7 @@ install_kde_plasma_desktop() {
 
 		kdegraphics-thumbnailers
 		ffmpegthumbs #video thumbnail generator for KDE file managers
+		ffmpegthumbnailer
 		kimageformat6-plugins
 
 	)
@@ -616,6 +617,7 @@ install_kde_plasma_desktop() {
 		kcalc
 		kcharselect
 		kamera
+		#digikam
 		krecorder
 		print-manager
 	)
@@ -3502,7 +3504,7 @@ menu_main() {
 		30)
 			sudo snap install thunderbird
 			;;
-		31)
+		31 | q)
 			echo "Exiting."
 			exit 0
 			;;
