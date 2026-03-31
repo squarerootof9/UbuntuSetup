@@ -575,6 +575,9 @@ install_kde_plasma_desktop() {
 		ffmpegthumbnailer
 		kimageformat6-plugins
 
+		#capturing desktop screenshots
+		kde-spectacle
+
 	)
 
 	kde_kio_modules=(
