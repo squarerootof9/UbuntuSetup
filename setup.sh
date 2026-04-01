@@ -3429,7 +3429,7 @@ menu_main() {
 			install_etcher_portable
 			;;
 		5)
-			install_deb_packages "https://launchpad.net/veracrypt/trunk/1.26.14/+download/veracrypt-1.26.14-Ubuntu-24.04-amd64.deb"
+			install_deb_packages "https://launchpad.net/veracrypt/trunk/1.26.24/+download/veracrypt-1.26.24-Ubuntu-25.04-amd64.deb"
 			;;
 		6)
 			menu_dev
