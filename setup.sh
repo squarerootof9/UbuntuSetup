@@ -578,6 +578,8 @@ install_kde_plasma_desktop() {
 		#capturing desktop screenshots
 		kde-spectacle
 
+		kchmviewer #for CHM help files
+
 	)
 
 	kde_kio_modules=(
@@ -1018,6 +1020,7 @@ EOF
 	misc_tools=(
 		#synaptic
 		#dotnet-sdk-9.0
+		libchm-bin #for CHM help files
 
 		aha #Ansi Hilight to HTML.
 
@@ -1031,6 +1034,14 @@ EOF
 		#radeontop nvidia-utils-580 intel-gpu-tools
 
 		vulkan-tools wayland-utils
+
+		mc
+		sqlite3
+		exif
+		sox
+		#rpm
+		#wimtools 
+
 	)
 
 	all_packages=(
@@ -1439,6 +1450,142 @@ EOF
 	# unplug/replug (or reboot)
 
 	echo "✅ Installed. Run: ledger-live"
+}
+
+install_discord() {
+
+	# ---- Config ----
+	local api_url="https://discord.com/api/download?platform=linux&format=tar.gz"
+
+	local base_dir="$HOME/.local/share/discord"
+	local cache_dir="$base_dir/_cache"
+
+	local final_url=""
+	local archive=""
+	local version=""
+	local app="discord"
+	local cache_archive=""
+	local install_dir=""
+	local extracted_dir=""
+	local launcher=""
+	local sandbox_path=""
+	local icon_src=""
+	local icon_dir="$HOME/.local/share/icons/hicolor/512x512/apps"
+	local icon_dst="$icon_dir/discord.png"
+
+	echo "Installing Discord (latest Linux tar.gz)..."
+
+	# ---- Deps ----
+	#sudo apt-get update -y >/dev/null
+	#sudo apt-get install -y curl ca-certificates coreutils findutils tar >/dev/null
+
+	mkdir -p "$base_dir" "$cache_dir"
+
+	# ---- Resolve current release URL/filename ----
+	# We ask curl what URL it ended up at after redirects.
+	final_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' "$api_url")"
+
+	if [[ -z "$final_url" || "$final_url" == "$api_url" ]]; then
+		echo "ERROR: Could not resolve Discord download URL."
+		return 1
+	fi
+
+	archive="$(basename "${final_url%%\?*}")"
+	if [[ -z "$archive" || "$archive" != *.tar.gz ]]; then
+		echo "ERROR: Resolved filename does not look like a Discord tar.gz: $archive"
+		return 1
+	fi
+
+	version="$(sed -nE 's/^discord-([0-9][0-9.]+)\.tar\.gz$/\1/p' <<<"$archive")"
+	if [[ -z "$version" ]]; then
+		echo "ERROR: Could not parse Discord version from filename: $archive"
+		return 1
+	fi
+
+	cache_archive="$cache_dir/$archive"
+	install_dir="$base_dir/discord-$version"
+
+	echo "Resolved Discord version: $version"
+	echo "Resolved archive: $archive"
+
+	# ---- Download (if missing) ----
+	if [[ ! -f "$cache_archive" ]]; then
+		echo "Downloading: $final_url"
+		curl -L --fail -o "$cache_archive" "$final_url"
+	else
+		echo "Using cached: $cache_archive"
+	fi
+
+	# ---- Extract (idempotent per version) ----
+	if [[ -d "$install_dir" ]]; then
+		echo "Already extracted: $install_dir"
+	else
+		echo "Extracting Discord..."
+		rm -rf "$base_dir/_extract-discord"
+		mkdir -p "$base_dir/_extract-discord"
+
+		tar -xzf "$cache_archive" -C "$base_dir/_extract-discord"
+
+		extracted_dir="$(find "$base_dir/_extract-discord" -mindepth 1 -maxdepth 1 -type d -name 'Discord' -print -quit || true)"
+		if [[ -z "$extracted_dir" ]]; then
+			echo "ERROR: Extracted Discord directory not found."
+			rm -rf "$base_dir/_extract-discord"
+			return 1
+		fi
+
+		mv -f "$extracted_dir" "$install_dir"
+		rm -rf "$base_dir/_extract-discord"
+	fi
+
+	# ---- Fix chrome-sandbox (Electron) ----
+	sandbox_path="$(find "$install_dir" -type f -name 'chrome-sandbox' -print -quit || true)"
+	if [[ -n "$sandbox_path" ]]; then
+		echo "Fixing chrome-sandbox: $sandbox_path"
+		sudo chown root:root "$sandbox_path"
+		sudo chmod 4755 "$sandbox_path"
+	else
+		echo "Note: chrome-sandbox not found."
+	fi
+
+	# ---- Install icon ----
+	icon_src="$(find "$install_dir" \
+		-type f \( -iname 'discord.png' -o -path '*/share/icons/*/apps/discord.png' -o -path '*/share/pixmaps/*.png' \) \
+		-print 2>/dev/null | head -n 1 || true)"
+
+	if [[ -n "$icon_src" ]]; then
+		mkdir -p "$icon_dir"
+		cp -f "$icon_src" "$icon_dst"
+		echo "Icon installed: $icon_dst"
+	else
+		echo "Note: Could not auto-find a Discord icon inside the tarball."
+	fi
+
+	# ---- Create launcher in /usr/local/bin ----
+	launcher="$install_dir/Discord"
+	if [[ ! -x "$launcher" ]]; then
+		echo "ERROR: Discord launcher not found/executable at: $launcher"
+		return 1
+	fi
+
+	sudo ln -sf "$launcher" /usr/local/bin/discord
+
+	# ---- Desktop entry ----
+	mkdir -p "$HOME/.local/share/applications"
+	cat >"$HOME/.local/share/applications/discord.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Discord
+Exec=/usr/local/bin/discord --password-store=basic --enable-features=WebRTCPipeWireCapturer %U
+Icon=discord
+Categories=Network;InstantMessaging;Chat;
+Terminal=false
+StartupNotify=true
+EOF
+
+	command -v update-desktop-database >/dev/null 2>&1 &&
+		update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
+
+	echo "✅ Installed Discord $version. Run: discord"
 }
 
 # Function to install .deb packages
@@ -3536,6 +3683,9 @@ menu_main() {
 			;;
 		ledger)
 			install_ledger_live
+			;;
+		discord)
+			install_discord
 			;;
 		brave)
 			sudo apt install curl
