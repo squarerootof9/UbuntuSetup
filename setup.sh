@@ -578,8 +578,8 @@ install_kde_plasma_desktop() {
 		#capturing desktop screenshots
 		kde-spectacle
 
-		kchmviewer #for CHM help files
-
+		#for CHM help files
+		#kchmviewer qt5 🤔 apt rdepends --installed libqt5core5t64
 	)
 
 	kde_kio_modules=(
@@ -1011,6 +1011,7 @@ EOF
 		python3-setuptools
 		python3-wheel
 		pipx
+		python3-pil # pillow image compression
 		#python3-bs4
 		#python3-html5lib
 		#python3-pyqtgraph #qt5 🤔 #pip install pyqtgraph PyQt6 or PySide6
@@ -1040,7 +1041,7 @@ EOF
 		exif
 		sox
 		#rpm
-		#wimtools 
+		#wimtools
 
 	)
 
