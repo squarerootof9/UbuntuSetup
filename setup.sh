@@ -946,7 +946,9 @@ install_apt_apps() {
 		obs-plugins
 		audacity
 		mpv
-		mplayer mplayer-gui mencoder
+		mplayer
+		mencoder
+		# mplayer-gui # gone/obsolete in Ubuntu 26.04
 		#vlc #qt5 🤔 apt rdepends --installed libqt5core5t64
 		#smplayer #qt5 🤔
 
@@ -962,12 +964,12 @@ install_apt_apps() {
 
 	#########################################################
 	#mplayer-skin-blue breaks mplayer-skins install
-	sudo tee /etc/apt/preferences.d/blacklist-mplayer-skin-blue >/dev/null <<EOF
-Package: mplayer-skin-blue
-Pin: release *
-Pin-Priority: -1
-EOF
-	media_apps+=("mplayer-skins")
+	#sudo tee /etc/apt/preferences.d/blacklist-mplayer-skin-blue >/dev/null <<EOF
+	#Package: mplayer-skin-blue
+	#Pin: release *
+	#Pin-Priority: -1
+	#EOF
+	#media_apps+=("mplayer-skins")
 	#########################################################
 
 	### 📱 Mobile / Flash / Embedded
