@@ -928,7 +928,8 @@ install_apt_apps() {
 
 	### 💾 File System & Disk Tools
 	fs_disk_tools=(
-		exfatprogs jfsutils reiserfsprogs xfsprogs udftools libparted-dev
+		exfatprogs jfsutils xfsprogs udftools libparted-dev
+		# reiserfsprogs   # legacy ReiserFS tools; kernel support removed upstream in Linux 6.13
 	)
 
 	### 🔐 Security & Auth
@@ -1095,9 +1096,9 @@ install_audio_studio() {
 		hydrogen-drumkits # (~166 MB)
 		rubberband-cli
 
-		jack-keyboard # JACK virtual MIDI keyboard
-		vmpk          # virtual MIDI piano keyboard (Qt)
-		vkeybd        # lightweight X11 virtual MIDI keyboard
+		# jack-keyboard # removed/replaced in Ubuntu Studio 26.04; use vmpk instead
+		vmpk   # virtual MIDI piano keyboard (Qt)
+		vkeybd # lightweight X11 virtual MIDI keyboard
 
 		qsynth             # GUI front-end for Fluidsynth (software synth)
 		fluid-soundfont-gm # General MIDI soundfont (~130 MB)
@@ -1231,7 +1232,7 @@ Icon=applications-multimedia
 EOF
 
 	#this symlink needs remade for the system to see changes (when testing)
-	sudo rm /etc/xdg/menus/applications-merged/lsp-plugins.menu
+	sudo rm -f /etc/xdg/menus/applications-merged/lsp-plugins.menu
 	sudo ln -s /usr/share/extra-xdg-menus/lsp-plugins.menu /etc/xdg/menus/applications-merged/lsp-plugins.menu
 
 }
