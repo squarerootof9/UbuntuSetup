@@ -1151,7 +1151,7 @@ install_audio_studio() {
 all_applications=(
 	meterbridge
 	net.sourceforge.kmetronome.desktop
-	jack-keyboard
+	#jack-keyboard
 	vkeybd
 	org.rncbc.qsynth
 	org.rncbc.qtractor
