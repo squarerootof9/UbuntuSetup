@@ -1337,7 +1337,8 @@ EOF
 install_ledger_live() {
 
 	# ---- Config ----
-	local ver="2.133.0"
+	#local ver="2.133.0"
+	local ver="4.8.0"
 	local app="ledger-live-desktop-${ver}-linux-x86_64"
 	local archive="${app}.AppImage"
 	local url="https://download.live.ledger.com/${archive}"
