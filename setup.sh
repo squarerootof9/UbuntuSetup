@@ -894,6 +894,41 @@ install_apps() {
 	sudo apt install --no-install-recommends "${packages[@]}"
 }
 
+remove_apps() {
+	local packages=("$@")
+
+	if [[ ${#packages[@]} -eq 0 ]]; then
+		echo "remove_apps: no packages specified"
+		return 1
+	fi
+
+	echo "Removing: ${packages[*]}"
+
+	# purge = remove packages + package config files
+	sudo apt purge -y "${packages[@]}"
+
+	echo "Autoremoving orphaned dependencies..."
+	sudo apt autoremove -y
+
+	echo "Cleaning APT cache..."
+	sudo apt clean
+
+	echo "Removal complete."
+}
+
+empty_trash() {
+	msg_start "Emptying user Trash…"
+
+	if command -v gio >/dev/null 2>&1; then
+		gio trash --empty
+	else
+		rm -rf "$HOME/.local/share/Trash/files/"*
+		rm -rf "$HOME/.local/share/Trash/info/"*
+	fi
+
+	msg_end "Trash emptied."
+}
+
 install_apt_apps() {
 
 	local options="${1:-}"
@@ -1081,54 +1116,54 @@ install_apt_apps() {
 	#pipx install piper-tts --include-deps
 }
 
+### 🖥️ Audio / Video / Music
+audio_apps=(
+
+	pavucontrol   # simple volume/mixer UI for Pulse/PipeWire
+	qpwgraph      # PipeWire/JACK patchbay (no need for helvum)
+	pipewire-jack # JACK compatibility layer on PipeWire
+	#easyeffects   # system-wide PipeWire FX/EQ for in/out audio
+
+	meterbridge       # JACK peak/VU/PPM meters
+	fmit              # instrument tuner
+	kmetronome        # KDE/Qt metronome
+	hydrogen          # drum machine + pattern sequencer
+	hydrogen-drumkits # (~166 MB)
+	rubberband-cli
+
+	# jack-keyboard # removed/replaced in Ubuntu Studio 26.04; use vmpk instead
+	vmpk   # virtual MIDI piano keyboard (Qt)
+	vkeybd # lightweight X11 virtual MIDI keyboard
+
+	qsynth             # GUI front-end for Fluidsynth (software synth)
+	fluid-soundfont-gm # General MIDI soundfont (~130 MB)
+	fluid-soundfont-gs # Roland GS-style soundfont
+	qtractor           # MIDI+audio multitrack sequencer/DAW
+	#musescore3         # notation/score editor (MuseScore Studio 3; 4.x via AppImage/Snap)
+
+	rakarrack    # real-time guitar effects rack
+	calf-plugins # LV2/LADSPA suite (EQ, comp, synths, etc.)
+	lsp-plugins  # pro-grade LV2/LADSPA/CLAP/VST plugin bundle
+	x42-plugins  # meters/utility + audio/video-friendly plugins
+	zam-plugins  # ZamAudio LV2/LADSPA FX (compressors, EQ, etc.) (~40 MB)
+	mda-lv2      # classic LV2 plugin pack (bread-and-butter FX)
+	carla        # modular plugin host for LV2/VST/etc.
+
+	ardour                # full DAW (multitrack audio/MIDI)
+	ardour-video-timeline # video timeline integration for Ardour
+
+	xjadeo # non-linear video editor (open source)
+
+	##################
+	# future thoughts
+	# carla-control   # optional remote GUI for Carla
+	# kdenlive        # non-linear video editor
+	# lmms            # pattern/loop-based DAW
+	# minuet          # KDE ear-training (intervals, chords, scales…)
+	# MuseScore 4+    # handle via AppImage/Snap as “MuseScore Studio”
+)
+
 install_audio_studio() {
-
-	### 🖥️ Audio / Video / Music
-	audio_apps=(
-
-		pavucontrol   # simple volume/mixer UI for Pulse/PipeWire
-		qpwgraph      # PipeWire/JACK patchbay (no need for helvum)
-		pipewire-jack # JACK compatibility layer on PipeWire
-		#easyeffects   # system-wide PipeWire FX/EQ for in/out audio
-
-		meterbridge       # JACK peak/VU/PPM meters
-		fmit              # instrument tuner
-		kmetronome        # KDE/Qt metronome
-		hydrogen          # drum machine + pattern sequencer
-		hydrogen-drumkits # (~166 MB)
-		rubberband-cli
-
-		# jack-keyboard # removed/replaced in Ubuntu Studio 26.04; use vmpk instead
-		vmpk   # virtual MIDI piano keyboard (Qt)
-		vkeybd # lightweight X11 virtual MIDI keyboard
-
-		qsynth             # GUI front-end for Fluidsynth (software synth)
-		fluid-soundfont-gm # General MIDI soundfont (~130 MB)
-		fluid-soundfont-gs # Roland GS-style soundfont
-		qtractor           # MIDI+audio multitrack sequencer/DAW
-		#musescore3         # notation/score editor (MuseScore Studio 3; 4.x via AppImage/Snap)
-
-		rakarrack    # real-time guitar effects rack
-		calf-plugins # LV2/LADSPA suite (EQ, comp, synths, etc.)
-		lsp-plugins  # pro-grade LV2/LADSPA/CLAP/VST plugin bundle
-		x42-plugins  # meters/utility + audio/video-friendly plugins
-		zam-plugins  # ZamAudio LV2/LADSPA FX (compressors, EQ, etc.) (~40 MB)
-		mda-lv2      # classic LV2 plugin pack (bread-and-butter FX)
-		carla        # modular plugin host for LV2/VST/etc.
-
-		ardour                # full DAW (multitrack audio/MIDI)
-		ardour-video-timeline # video timeline integration for Ardour
-
-		xjadeo # non-linear video editor (open source)
-
-		##################
-		# future thoughts
-		# carla-control   # optional remote GUI for Carla
-		# kdenlive        # non-linear video editor
-		# lmms            # pattern/loop-based DAW
-		# minuet          # KDE ear-training (intervals, chords, scales…)
-		# MuseScore 4+    # handle via AppImage/Snap as “MuseScore Studio”
-	)
 
 	#systemctl --user --now enable pipewire pipewire-pulse wireplumber.service
 	#systemctl --user restart pipewire pipewire-pulse wireplumber.service
@@ -1146,6 +1181,11 @@ install_audio_studio() {
 	jackify_dir_desktops "$HOME/.local/share/applications"
 	echo ""
 
+}
+
+remove_audio_studio() {
+
+	remove_apps "${audio_apps[@]}"
 }
 
 all_applications=(
@@ -3657,7 +3697,7 @@ menu_main() {
 			firefox_add
 			;;
 		30)
-			sudo snap install thunderbird
+			sudo snap install thunderbird --channel=latest/stable
 			;;
 		31 | q)
 			echo "Exiting."
@@ -3701,6 +3741,12 @@ menu_main() {
 			;;
 		iptablesreset)
 			iptables_reset
+			;;
+		rmstudio)
+			remove_audio_studio
+			;;
+		xtrash)
+			empty_trash
 			;;
 		*)
 			echo "Invalid option. Please try again."
