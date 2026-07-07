@@ -3236,6 +3236,244 @@ firefox_remove() {
 	msg_end "Firefox ESR and repository removed."
 }
 
+install_tor_browser() {
+	local version="${1:-15.0.17}"
+
+	local base_dir="$HOME/TOR"
+	local install_dir="$base_dir/tor-browser"
+
+	local archive="tor-browser-linux-x86_64-${version}.tar.xz"
+	local signature="${archive}.asc"
+
+	local base_url="https://www.torproject.org/dist/torbrowser/${version}"
+	local archive_url="${base_url}/${archive}"
+	local signature_url="${base_url}/${signature}"
+
+	local tor_key="EF6E286DDA85EA2A4BA7DE684E2C6E8793298290"
+	local keyring="$base_dir/tor.keyring"
+
+	local apparmor_profile="/etc/apparmor.d/tor-browser-local"
+
+	msg_start "Installing Tor Browser ${version}…"
+
+	# ---------------------------------------------------------
+	# Dependencies
+	# ---------------------------------------------------------
+
+	install_apps \
+		curl \
+		gnupg \
+		xz-utils
+
+	# ---------------------------------------------------------
+	# Working directory
+	# ---------------------------------------------------------
+
+	mkdir -p "$base_dir"
+	cd "$base_dir" || return 1
+
+	# ---------------------------------------------------------
+	# Import official Tor Browser signing key through WKD
+	# ---------------------------------------------------------
+
+	msg_start "Importing Tor Browser signing key…"
+
+	gpg \
+		--auto-key-locate nodefault,wkd \
+		--locate-keys torbrowser@torproject.org ||
+		{
+			echo "✗ Failed to retrieve Tor Browser signing key."
+			return 1
+		}
+
+	# ---------------------------------------------------------
+	# Verify the expected primary-key fingerprint exists
+	# ---------------------------------------------------------
+
+	msg_start "Checking Tor Browser signing-key fingerprint…"
+
+	if ! gpg --with-colons --fingerprint "$tor_key" 2>/dev/null |
+		awk -F: '$1 == "fpr" { print $10 }' |
+		grep -qx "$tor_key"; then
+
+		echo "✗ Expected Tor Browser signing key not found:"
+		echo "  $tor_key"
+		return 1
+	fi
+
+	echo "✓ Tor Browser signing-key fingerprint verified."
+
+	# ---------------------------------------------------------
+	# Export isolated verification keyring
+	# ---------------------------------------------------------
+
+	msg_start "Creating Tor verification keyring…"
+
+	gpg \
+		--output "$keyring.tmp" \
+		--export "$tor_key" ||
+		{
+			rm -f "$keyring.tmp"
+			echo "✗ Failed to export Tor Browser signing key."
+			return 1
+		}
+
+	mv -f "$keyring.tmp" "$keyring"
+	chmod 600 "$keyring"
+
+	# ---------------------------------------------------------
+	# Download archive + detached signature
+	# ---------------------------------------------------------
+
+	msg_start "Downloading Tor Browser ${version}…"
+
+	curl \
+		--fail \
+		--location \
+		--continue-at - \
+		--output "$archive" \
+		"$archive_url" ||
+		{
+			echo "✗ Tor Browser archive download failed."
+			return 1
+		}
+
+	curl \
+		--fail \
+		--location \
+		--output "$signature" \
+		"$signature_url" ||
+		{
+			echo "✗ Tor Browser signature download failed."
+			return 1
+		}
+
+	# ---------------------------------------------------------
+	# Verify BEFORE extraction
+	# ---------------------------------------------------------
+
+	msg_start "Verifying Tor Browser signature…"
+
+	if ! gpgv \
+		--keyring "$keyring" \
+		"$signature" \
+		"$archive"; then
+
+		echo
+		echo "✗ Tor Browser signature verification FAILED."
+		echo "✗ Refusing to extract or install."
+		return 1
+	fi
+
+	echo
+	echo "✓ Tor Browser signature verified."
+
+	# ---------------------------------------------------------
+	# Extract
+	# ---------------------------------------------------------
+
+	if [[ -d "$install_dir" ]]; then
+		msg_text "Tor Browser directory already exists:"
+		msg_text "  $install_dir"
+		msg_text "Skipping extraction."
+	else
+		msg_start "Extracting Tor Browser…"
+
+		tar -xJf "$archive" -C "$base_dir" ||
+			{
+				echo "✗ Extraction failed."
+				return 1
+			}
+
+		echo "✓ Extracted to:"
+		echo "  $install_dir"
+	fi
+
+	# ---------------------------------------------------------
+	# Keep launcher contained inside ~/TOR
+	# ---------------------------------------------------------
+
+	local launcher="$install_dir/start-tor-browser.desktop"
+
+	if [[ ! -f "$launcher" ]]; then
+		echo "✗ Tor Browser launcher not found:"
+		echo "  $launcher"
+		return 1
+	fi
+
+	chmod +x "$launcher"
+
+	# ---------------------------------------------------------
+	# AppArmor user-namespace profile
+	# ---------------------------------------------------------
+
+	#for testing
+	#pid="$(pgrep -f '/home/et/TOR/tor-browser/Browser/firefox.real' | head -n1)"
+	#cat "/proc/$pid/attr/current"
+
+	msg_start "Installing Tor Browser AppArmor profile…"
+
+	sudo tee "$apparmor_profile" >/dev/null <<EOF
+# Tor Browser local tarball installation
+#
+# Installed by setup.sh
+# Tor Browser location:
+#   $install_dir
+#
+# This profile intentionally remains unconfined.
+# Its purpose is to give Tor Browser an AppArmor label
+# that permits creation of user namespaces required by
+# the Firefox/Gecko process sandbox.
+
+abi <abi/4.0>,
+include <tunables/global>
+
+profile tor-browser-local \
+$install_dir/Browser/firefox{,.real} \
+flags=(unconfined) {
+
+    userns,
+
+    # Site-specific additions and overrides.
+    include if exists <local/tor-browser>
+}
+EOF
+
+	# ---------------------------------------------------------
+	# Validate profile before loading it
+	# ---------------------------------------------------------
+
+	msg_start "Validating AppArmor profile…"
+
+	if ! sudo apparmor_parser -Q "$apparmor_profile"; then
+		echo "✗ AppArmor profile validation failed."
+		echo "  Profile left at:"
+		echo "  $apparmor_profile"
+		return 1
+	fi
+
+	# ---------------------------------------------------------
+	# Reload only this profile
+	# ---------------------------------------------------------
+
+	msg_start "Loading Tor Browser AppArmor profile…"
+
+	sudo apparmor_parser -r "$apparmor_profile" ||
+		{
+			echo "✗ Failed to load AppArmor profile."
+			return 1
+		}
+
+	msg_end "Tor Browser ${version} installed successfully."
+
+	echo "Location:"
+	echo "  $install_dir"
+	echo
+	echo "Launch with:"
+	echo "  $launcher"
+	echo
+}
+
 install_openshot() {
 
 	#flatpak install flathub org.openshot.OpenShot
@@ -3738,6 +3976,9 @@ menu_main() {
 			echo "deb [signed-by=/usr/share/keyrings/brave-browser-archive-keyring.gpg] https://brave-browser-apt-release.s3.brave.com/ stable main" | sudo tee /etc/apt/sources.list.d/brave-browser-release.list
 			sudo apt update
 			sudo apt install brave-browser
+			;;
+		tor)
+			install_tor_browser
 			;;
 		iptablesreset)
 			iptables_reset
