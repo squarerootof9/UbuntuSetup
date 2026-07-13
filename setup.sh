@@ -3474,6 +3474,78 @@ EOF
 	echo
 }
 
+install_tor_browser_addons() {
+	local tor_base="$HOME/TOR"
+	local tor_browser="$tor_base/tor-browser"
+	local browser_dir="$tor_browser/Browser"
+	local distro_dir="$browser_dir/distribution"
+	local ext_dir="$tor_base/extensions"
+	local policy_file="$distro_dir/policies.json"
+
+	# Add-ons from addons.mozilla.org "latest" endpoints
+	local youtube_adblock_url="https://addons.mozilla.org/firefox/downloads/latest/adblock-for-youtube/latest.xpi"
+	local privacy_badger_url="https://addons.mozilla.org/firefox/downloads/latest/privacy-badger17/latest.xpi"
+
+	local youtube_adblock_xpi="$ext_dir/adblock-for-youtube.xpi"
+	local privacy_badger_xpi="$ext_dir/privacy-badger.xpi"
+
+	if [[ ! -d "$browser_dir" ]]; then
+		echo "✗ Tor Browser not found at:"
+		echo "  $browser_dir"
+		echo "  Run install_tor_browser first."
+		return 1
+	fi
+
+	msg_start "Installing Tor Browser add-on policy…"
+	msg_text "Reminder: extra Tor Browser add-ons can make your fingerprint more unique."
+
+	mkdir -p "$distro_dir" "$ext_dir"
+
+	msg_start "Downloading Tor Browser extension XPIs…"
+
+	curl -L --fail -o "$youtube_adblock_xpi" "$youtube_adblock_url" || {
+		echo "✗ Failed to download YouTube ad blocker extension."
+		return 1
+	}
+
+	curl -L --fail -o "$privacy_badger_xpi" "$privacy_badger_url" || {
+		echo "✗ Failed to download Privacy Badger extension."
+		return 1
+	}
+
+	chmod 644 "$youtube_adblock_xpi" "$privacy_badger_xpi"
+
+	if [[ -f "$policy_file" ]]; then
+		cp -a "$policy_file" "$policy_file.bak.$(date +%F_%H%M%S)"
+	fi
+
+	cat >"$policy_file" <<EOF
+{
+  "policies": {
+    "Extensions": {
+      "Install": [
+        "file://${youtube_adblock_xpi}",
+        "file://${privacy_badger_xpi}"
+      ]
+    }
+  }
+}
+EOF
+
+	msg_end "Tor Browser add-on policy installed."
+
+	echo "Policy file:"
+	echo "  $policy_file"
+	echo
+	echo "Extensions:"
+	echo "  $youtube_adblock_xpi"
+	echo "  $privacy_badger_xpi"
+	echo
+	echo "Restart Tor Browser, then check:"
+	echo "  about:policies"
+	echo "  about:addons"
+}
+
 install_openshot() {
 
 	#flatpak install flathub org.openshot.OpenShot
@@ -3979,6 +4051,7 @@ menu_main() {
 			;;
 		tor)
 			install_tor_browser
+			install_tor_browser_addons
 			;;
 		iptablesreset)
 			iptables_reset
