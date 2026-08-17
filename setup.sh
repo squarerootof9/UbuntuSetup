@@ -601,6 +601,7 @@ install_kde_plasma_desktop() {
 		bluedevil
 		bluetooth
 		bluez-tools
+		#blueman
 	)
 
 	essential_kde_utilities=(
@@ -1039,6 +1040,8 @@ install_apt_apps() {
 		ncat
 		ndiff
 		zenmap
+		aircrack-ng
+		#wireshark
 	)
 
 	### 🐍 Python Packages ###
@@ -2320,48 +2323,10 @@ iptables_rdp() {
 #######
 
 install_cloudflare_dns() {
-	local CONF="/etc/systemd/resolved.conf"
-	local BACKUP="${CONF}.stealthdns.bak"
 
-	if ! command -v cloudflared >/dev/null 2>&1; then
-		wget -O cloudflared-linux-amd64.deb \
-			https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-
-		sudo apt-get install ./cloudflared-linux-amd64.deb
-	fi
-
-	sudo tee "/etc/systemd/system/cloudflared.service" >/dev/null <<EOCONF
-[Unit]
-Description=Cloudflared DNS over HTTPS proxy
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-User=root
-ExecStart=/usr/local/bin/cloudflared --config /etc/cloudflared/config.yml proxy-dns
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOCONF
-
-	sudo mkdir -p /etc/cloudflared
-	sudo tee "/etc/cloudflared/config.yml" >/dev/null <<EOCF
-# Run a local DNS proxy
-proxy-dns: true
-proxy-dns-address: 127.0.0.1
-proxy-dns-port: 53
-
-# Upstream DoH endpoints (Cloudflare)
-proxy-dns-upstream:
-  - https://1.1.1.1/dns-query
-  - https://1.0.0.1/dns-query
-EOCF
-
-	sudo systemctl daemon-reload
-	sudo systemctl enable --now cloudflared
-	sudo systemctl status cloudflared
+	echo
+	sudo apt install --no-install-recommends dnscrypt-proxy
+	echo
 
 	echo "🕵️‍♂️🔐 Enabling stealth DNS (Cloudflare DNS over HTTPS)..."
 
@@ -2377,6 +2342,9 @@ EOCF
 		return 1
 	fi
 
+	local CONF="/etc/systemd/resolved.conf"
+	local BACKUP="${CONF}.stealthdns.bak"
+
 	# Backup existing config once
 	if [[ -f "$CONF" && ! -f "$BACKUP" ]]; then
 		echo "📦 Backing up existing $CONF to $BACKUP"
@@ -2389,7 +2357,7 @@ EOCF
 	echo "✍️  Writing $CONF ..."
 	sudo tee "$CONF" >/dev/null <<EOF
 [Resolve]
-DNS=127.0.0.1
+DNS=127.0.2.1
 DNSOverTLS=no
 FallbackDNS=
 EOF
@@ -2397,6 +2365,9 @@ EOF
 	echo "🔄 Restarting systemd-resolved..."
 	if sudo systemctl restart systemd-resolved; then
 		echo "✅ Stealth DNS enabled via systemd-resolved (Cloudflare over DoH)."
+		echo
+		echo "✅ You can verify your encrypted DNS here: https://one.one.one.one/help/"
+		echo
 	else
 		echo "❌ Failed to restart systemd-resolved."
 		return 1
@@ -2404,6 +2375,10 @@ EOF
 }
 
 remove_cloudflare_dns() {
+
+	#echo
+	#sudo apt remove --purge dnscrypt-proxy
+	#echo
 	local CONF="/etc/systemd/resolved.conf"
 	local BACKUP="${CONF}.stealthdns.bak"
 
@@ -2429,6 +2404,7 @@ EOF
 	echo "🔄 Restarting systemd-resolved..."
 	if sudo systemctl restart systemd-resolved; then
 		echo "✅ Stealth DNS settings removed; systemd-resolved restarted."
+		echo
 	else
 		echo "❌ Failed to restart systemd-resolved."
 		return 1
@@ -2436,20 +2412,16 @@ EOF
 }
 
 stealth_dns_nm_apply_all() {
-	local ipv4_dns="1.1.1.1 1.0.0.1"
-	local ipv6_dns="2606:4700:4700::1111 2606:4700:4700::1001" # CF IPv6
 
 	if ! command -v nmcli >/dev/null 2>&1; then
 		echo "❌ nmcli not found. NetworkManager is required for this function."
 		return 1
 	fi
 
-	echo "🥷🌐 Applying stealth DNS to all NetworkManager connections..."
-	echo "    IPv4 → ${ipv4_dns}"
-	echo "    IPv6 → ${ipv6_dns}"
-	echo
+	echo "🥷🌐 Disabling automatic DNS on NetworkManager connections..."
 
 	nmcli -t -f NAME connection show | while IFS= read -r conn; do
+		echo
 		[[ -z "$conn" ]] && continue
 		[[ "$conn" == "lo" ]] && {
 			echo "⏭️  Skipping loopback (lo)"
@@ -2467,8 +2439,7 @@ stealth_dns_nm_apply_all() {
 		# IPv4: only touch if auto/manual/shared
 		case "$m4" in
 		auto | manual | shared)
-			echo "    → Setting IPv4 DNS..."
-			sudo nmcli connection modify "$conn" ipv4.dns "$ipv4_dns"
+			echo "    → Ignoring automatically supplied IPv4 DNS..."
 			sudo nmcli connection modify "$conn" ipv4.ignore-auto-dns yes
 			;;
 		"")
@@ -2482,8 +2453,7 @@ stealth_dns_nm_apply_all() {
 		# IPv6: only touch if auto/manual
 		case "$m6" in
 		auto | manual)
-			echo "    → Setting IPv6 DNS..."
-			sudo nmcli connection modify "$conn" ipv6.dns "$ipv6_dns"
+			echo "    → Ignoring automatically supplied IPv6 DNS..."
 			sudo nmcli connection modify "$conn" ipv6.ignore-auto-dns yes
 			;;
 		"")
@@ -2494,9 +2464,14 @@ stealth_dns_nm_apply_all() {
 			;;
 		esac
 
-		echo
+		#echo
+
+		# hits pipefail if the connection is not active, so we skip it for now
+		#sudo nmcli connection down $conn && sudo nmcli connection up $conn
+
 	done
 
+	echo
 	echo "✅ Stealth DNS applied where supported."
 	echo ""
 	echo "ℹ️ Active connections will need to be re-connected to apply changes."
@@ -2504,6 +2479,17 @@ stealth_dns_nm_apply_all() {
 	echo "    sudo nmcli connection down \"<name>\" && sudo nmcli connection up \"<name>\")"
 	echo
 	echo "View dns info with 'resolvectl status'."
+	echo
+	echo "View connection info with 'nmcli connection show'."
+	echo
+	resolvectl status
+	echo
+	nmcli connection show
+	echo ""
+	echo "ℹ️ Active connections will need to be re-connected to apply changes."
+	echo "   (You can reconnect a specific connection with:"
+	echo "    sudo nmcli connection down \"<name>\" && sudo nmcli connection up \"<name>\")"
+	echo
 }
 
 stealth_dns_nm_reset_all() {
@@ -2515,6 +2501,7 @@ stealth_dns_nm_reset_all() {
 	echo "🧹 Resetting DNS for all NetworkManager connections to use DHCP/auto..."
 
 	nmcli -t -f NAME connection show | while IFS= read -r conn; do
+		echo
 		[[ -z "$conn" ]] && continue
 		[[ "$conn" == "lo" ]] && {
 			echo "⏭️  Skipping loopback (lo)"
@@ -2550,9 +2537,9 @@ stealth_dns_nm_reset_all() {
 			;;
 		esac
 
-		echo
 	done
 
+	echo
 	echo "✅ DNS reset to automatic where supported."
 	echo ""
 	echo "ℹ️ Active connections will need to be re-connected to apply changes."
@@ -2560,6 +2547,8 @@ stealth_dns_nm_reset_all() {
 	echo "    sudo nmcli connection down \"<name>\" && sudo nmcli connection up \"<name>\")"
 	echo
 	echo "View dns info with 'resolvectl status'."
+
+	#resolvectl status
 }
 
 menu_dns() {
@@ -2578,30 +2567,14 @@ menu_dns() {
 
 		case "$dns_choice" in
 		1)
-			echo
-			echo "Installing Cloudflare DNS..."
-			echo
 			install_cloudflare_dns
 			stealth_dns_nm_apply_all
-			echo
-			echo "Cloudflare DNS is now enabled."
-			echo
-			echo "✅ You can verify your encrypted DNS here: https://one.one.one.one/help/"
-			echo
 			;;
 		2)
-			echo
-			echo "Removing Cloudflare DNS..."
-			echo
 			remove_cloudflare_dns
 			stealth_dns_nm_reset_all
-			echo
-			echo "Cloudflare DNS is now disabled."
-			echo
-			echo "✅ You can verify your standard DNS here: https://one.one.one.one/help/"
-			echo
 			;;
-		3)
+		3 | q)
 			menu_main
 			;;
 		*)
@@ -2853,7 +2826,7 @@ menu_vpn() {
 		5)
 			if [[ -z "$name" ]]; then echo "✗ set a profile name first (option 1)"; else vpn_status "$name"; fi
 			;;
-		6)
+		6 | q)
 			menu_main
 			return 0
 			;;
@@ -2903,6 +2876,8 @@ EOF
 
 	sudo systemctl daemon-reload
 	sudo systemctl enable ollama
+	sudo systemctl restart ollama
+	hash -r
 
 	pipx install piper-tts --include-deps
 
@@ -3237,7 +3212,7 @@ firefox_remove() {
 }
 
 install_tor_browser() {
-	local version="${1:-15.0.17}"
+	local version="${1:-15.0.19}"
 
 	local base_dir="$HOME/TOR"
 	local install_dir="$base_dir/tor-browser"
@@ -3692,7 +3667,7 @@ menu_nodejs() {
 		2)
 			remove_nodejs
 			;;
-		3)
+		3 | q)
 			menu_main
 			;;
 		*)
@@ -3727,7 +3702,7 @@ menu_homebrew() {
 		2)
 			remove_homebrew
 			;;
-		3)
+		3 | q)
 			menu_main
 			;;
 		*)
@@ -3768,7 +3743,7 @@ menu_flatpak() {
 			sudo apt remove flatpak
 			sudo apt autoremove
 			;;
-		3)
+		3 | q)
 			menu_main
 			;;
 		*)
@@ -3842,7 +3817,7 @@ menu_dev() {
 		11)
 			setup_git_ssh_signing
 			;;
-		12)
+		12 | q)
 			menu_main
 			;;
 		*)
