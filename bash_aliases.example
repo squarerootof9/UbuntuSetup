@@ -84,7 +84,6 @@ extract() {
 	done
 }
 
-
 # ---- git quick commands ----
 
 # Safe “wrapper” so functions can pass args cleanly
@@ -326,7 +325,7 @@ vupall() {
 }
 
 # Quick “what am I using right now?”
-vinfo() {
+venvinfo() {
 	echo "python: $(command -v python)"
 	python --version
 	python -m pip --version
@@ -353,11 +352,473 @@ pip (always targets the *current* python/venv)
   vfreeze [file]         Write requirements (default: requirements.txt)
   vupall                Upgrade all outdated packages in this env
   vcp                   Purge pip cache (user-wide)
-  vinfo                 Show which python/pip/venv you're using
+  venvinfo                 Show which python/pip/venv you're using
 
 EOF
 }
 
 t() {
 	ollama run gpt-oss:20b "${*:-hello}"
+}
+
+# Media Helpers
+#if you have a floppy drive, this will conflict with minfo, so you can rename it to something else if you ever need
+minfo() {
+	ffprobe -hide_banner -i "$1"
+}
+
+vmp4() {
+	[[ $# -ge 1 ]] || {
+		echo "usage: vmp4 <input> [output.mp4]"
+		return 2
+	}
+
+	local in="$1"
+	local out="${2:-${in%.*}.mp4}"
+
+	ffmpeg -hide_banner -i "$in" \
+		-vf "fps=30000/1001,format=yuv420p" \
+		-c:v libx264 -preset medium -crf 18 \
+		-c:a aac -ar 48000 -b:a 192k \
+		-movflags +faststart \
+		"$out"
+}
+
+vmpg() {
+	[[ $# -ge 1 ]] || {
+		echo "usage: vmpg <input> [output.mpg]"
+		return 2
+	}
+
+	local in="$1"
+	local out="${2:-${in%.*}.mpg}"
+
+	ffmpeg -hide_banner -i "$in" \
+		-c:v mpeg2video -q:v 3 \
+		-c:a mp2 -ar 48000 -b:a 192k \
+		"$out"
+}
+
+vcopymp3mpg() {
+	[[ $# -ge 1 ]] || {
+		echo "usage: vcopymp3mpg <input> [output.mpg]"
+		return 2
+	}
+
+	local in="$1"
+	local out="${2:-${in%.*}.mpg}"
+
+	ffmpeg -hide_banner -i "$in" \
+		-c:v mpeg2video -q:v 3 \
+		-c:a copy \
+		"$out"
+}
+
+# ---- npm / blockchain / NFT quick-tools (bash) ----
+
+# Small wrappers keep commands short but still allow args.
+n() { npm "$@"; }
+nx() { npx "$@"; }
+
+# npm basics
+ni() { npm install "$@"; }
+nid() { npm install --save-dev "$@"; }
+nr() { npm run "$@"; }
+nt() { npm test "$@"; }
+nb() { npm run build "$@"; }
+
+# Prefer clean, reproducible installs when package-lock.json exists.
+nci() {
+	if [[ -f package-lock.json ]]; then
+		npm ci "$@"
+	else
+		echo "✗ no package-lock.json found; use: ni"
+		return 1
+	fi
+}
+
+# Show useful npm/project info.
+ninfo() {
+	echo "node:    $(command -v node 2>/dev/null || echo '(not found)')"
+	node --version 2>/dev/null || true
+	echo "npm:     $(command -v npm 2>/dev/null || echo '(not found)')"
+	npm --version 2>/dev/null || true
+	[[ -f package.json ]] && echo "project: $(pwd)" || echo "project: (no package.json here)"
+}
+
+# Light npm cleanup: safe-ish maintenance, not destructive to source.
+nclean() {
+	echo "Cleaning npm cache verification..."
+	npm cache verify
+
+	if [[ -d node_modules ]]; then
+		echo "Removing node_modules..."
+		rm -rf node_modules
+	fi
+
+	if [[ -f package-lock.json ]]; then
+		echo "Reinstalling from package-lock.json..."
+		npm ci
+	else
+		echo "No package-lock.json; running npm install..."
+		npm install
+	fi
+}
+
+# Hard reset npm dependencies. Keeps package.json, deletes lockfile too.
+nnuke() {
+	echo "This will remove node_modules and package-lock.json."
+	read -r -p "Continue? [y/N] " ans
+	[[ "$ans" == "y" || "$ans" == "Y" ]] || return 0
+
+	rm -rf node_modules package-lock.json
+	npm install
+}
+
+# ---- Hardhat helpers ----
+
+hh() { npx hardhat "$@"; }
+hhc() { npx hardhat compile "$@"; }
+hht() { npx hardhat test "$@"; }
+hhh() { npx hardhat help "$@"; }
+
+# Start your local Hardhat node using your custom network name.
+hhn() {
+	npx hardhat node --network localNode "$@"
+}
+
+# Run a Hardhat script.
+# Example:
+#   hhr scripts/status.ts --network localhost
+hhr() {
+	npx hardhat run "$@"
+}
+
+# Your interactive NFT/status menu.
+# Example:
+#   hhs
+#   hhs --network localhost
+hhs() {
+	npx hardhat run scripts/status.ts "$@"
+}
+
+# Common local workflow: compile, then open status menu.
+hhgo() {
+	npx hardhat compile || return 1
+	npx hardhat run scripts/status.ts "$@"
+}
+
+# ---- Foundry helpers ----
+
+f() { forge "$@"; }
+fb() { forge build "$@"; }
+ft() { forge test "$@"; }
+ftv() { forge test -vvv "$@"; }
+fc() { forge clean "$@"; }
+
+# Update Foundry toolchain.
+fup() {
+	foundryup
+	forge --version
+}
+
+# ---- IPFS / NFT asset helpers ----
+
+# Add a folder as a wrapped CIDv1 IPFS directory.
+# Output should usually be a bafy... CID.
+# Example:
+#   ipfswrap images
+#   ipfswrap metadata
+ipfswrap() {
+	local dir="${1:-.}"
+
+	[[ -d "$dir" ]] || {
+		echo "✗ not a directory: $dir"
+		return 1
+	}
+
+	ipfs add -r --cid-version=1 --wrap-with-directory "$dir"
+}
+
+# Show pinned IPFS objects.
+ipfspins() {
+	ipfs pin ls "$@"
+}
+
+# Run IPFS garbage collection.
+# This only removes unpinned blocks.
+ipfsgc() {
+	ipfs repo gc "$@"
+}
+
+ipfsdag() {
+	ipfs dag import "$@"
+}
+
+# Pack a directory into a CAR file if ipfs-car is available through npx.
+# Example:
+#   mkcar images
+#   mkcar metadata metadata.car
+mkcar() {
+	local dir="${1:-.}"
+	local out="${2:-${dir%/}.car}"
+
+	[[ -d "$dir" ]] || {
+		echo "✗ not a directory: $dir"
+		return 1
+	}
+
+	npx ipfs-car pack "$dir" --output "$out"
+	echo "✓ wrote $out"
+}
+
+# Show the root CID(s) for a CAR file.
+# This is usually the CID you want for ipfs://.../
+# Example:
+#   carcid images.car
+carcid() {
+	npx ipfs-car roots "$@"
+}
+
+# List paths contained inside a CAR file.
+# Example:
+#   carls images.car
+carls() {
+	npx ipfs-car ls "$@"
+}
+
+# ---- Project bootstrapper ----
+
+# Create a general Hardhat + Foundry + OpenZeppelin project in the current folder.
+# Run from inside an empty/new project directory.
+mkchain() {
+	if ! command -v npm >/dev/null 2>&1; then
+		echo "✗ npm not found."
+		return 1
+	fi
+
+	echo "Initializing npm project..."
+	[[ -f package.json ]] || npm init -y || return 1
+
+	echo "Installing Hardhat + common Ethereum dev packages..."
+	npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox @nomicfoundation/hardhat-ledger hardhat-gas-reporter || return 1
+	npm install @openzeppelin/contracts @inquirer/prompts || return 1
+
+	echo "Initializing Hardhat..."
+	npx hardhat --init
+
+	echo "Installing/initializing Foundry if available..."
+	if command -v forge >/dev/null 2>&1; then
+		forge init --force
+		forge install foundry-rs/forge-std
+	else
+		echo "Foundry not found."
+		echo "Install later with:"
+		echo "  curl -L https://foundry.paradigm.xyz | bash"
+		echo "  foundryup"
+	fi
+
+	echo "Compiling..."
+	npx hardhat compile
+
+	echo "✓ blockchain project bootstrap complete"
+}
+
+nfthelp() {
+	cat <<'EOF'
+
+npm / blockchain / NFT helpers
+------------------------------
+
+npm
+  n <args...>          npm passthrough
+  nx <args...>         npx passthrough
+  ni <pkgs...>         npm install
+  nid <pkgs...>        npm install --save-dev
+  nr <script>          npm run <script>
+  nt                   npm test
+  nb                   npm run build
+  nci                  npm ci if package-lock.json exists
+  ninfo                show node/npm/project info
+  nclean               remove node_modules, reinstall cleanly
+  nnuke                remove node_modules + package-lock.json, reinstall
+
+Hardhat
+  hh <args...>         npx hardhat passthrough
+  hhc                  hardhat compile
+  hht                  hardhat test
+  hhn                  hardhat node --network localNode
+  hhr <script...>      hardhat run
+  hhs                  run scripts/status.ts
+  hhgo                 compile, then run scripts/status.ts
+
+Foundry
+  f <args...>          forge passthrough
+  fb                   forge build
+  ft                   forge test
+  ftv                  forge test -vvv
+  fc                   forge clean
+  fup                  foundryup + forge version
+
+IPFS / NFT assets
+  ipfswrap <dir>       ipfs add -r --cid-version=1 --wrap-with-directory <dir>
+  ipfspins             ipfs pin ls
+  ipfsgc               ipfs repo gc
+  ipfsdag <file.car>   ipfs dag import CAR file
+  mkcar <dir> [out]    pack directory into CAR file
+  carcid <file.car>    show CAR root CID
+  carls <file.car>     list paths inside CAR file
+
+Project setup
+  mkchain              bootstrap npm + Hardhat + OpenZeppelin + Foundry
+
+EOF
+}
+
+mknpmnode() {
+
+	# Basic sanity checks
+	if ! command -v npm >/dev/null 2>&1; then
+		echo "❌ npm not found."
+		return 1
+	fi
+
+	#mkdir tommy-tester
+	#cd tommy-tester
+	#run from inside directory
+
+	npm init -y
+	npx hardhat --init
+	npx hardhat compile
+	npm i @openzeppelin/contracts
+	npm i --save-dev hardhat @nomicfoundation/hardhat-toolbox @openzeppelin/contracts --force
+	npm install @inquirer/prompts --force
+	npm install --save-dev @nomicfoundation/hardhat-ledger
+	npm install hardhat-gas-reporter --save-dev --force
+
+	curl -L https://foundry.paradigm.xyz | bash
+	foundryup
+	forge --version
+	forge init --force
+	forge install foundry-rs/forge-std
+
+	# add y/n to launch (and serve as a pause to change config)
+	npx hardhat node --network localNode
+
+}
+
+vup() {
+	local log="/tmp/hideme-free-nl.log"
+
+	# Ask for sudo password in the foreground, where it can actually prompt.
+	sudo -v || return 1
+
+	# Avoid double-start.
+	if ip link show vpn >/dev/null 2>&1; then
+		echo "✓ VPN already up"
+		return 0
+	fi
+
+	(
+		cd /opt/hide.me || exit 1
+
+		sudo -n setsid ./hide.me \
+			-d 1.1.1.1:53,8.8.8.8:53 \
+			connect free-nl \
+			>"$log" 2>&1 </dev/null &
+	)
+
+	sleep 3
+
+	if ip link show vpn >/dev/null 2>&1; then
+		echo "✓ VPN up"
+		sudo wg show 2>/dev/null || true
+	else
+		echo "✗ VPN did not come up yet. Log:"
+		tail -n 40 "$log"
+		return 1
+	fi
+}
+
+vdown() {
+	sudo -v || return 1
+
+	(
+		cd /opt/hide.me || exit 1
+		sudo -n ./hide.me disconnect 2>/dev/null || true
+	)
+
+	sleep 2
+
+	sudo ip link delete vpn 2>/dev/null || true
+
+	while ip rule show | grep -q 'lookup 55555'; do
+		sudo ip rule del table 55555 2>/dev/null || break
+	done
+
+	while ip -6 rule show | grep -q 'lookup 55555'; do
+		sudo ip -6 rule del table 55555 2>/dev/null || break
+	done
+
+	sudo ip route flush table 55555 2>/dev/null || true
+	sudo ip -6 route flush table 55555 2>/dev/null || true
+
+	echo "✓ VPN down / routes cleaned"
+}
+
+vpnsetup() {
+	local startdir
+	local dl_dir="$HOME/Downloads"
+	local archive="hide.me-linux-amd64.tar.gz"
+	local url="https://hide.me/download/linux-amd64"
+	local workdir="$dl_dir/hide.me-linux"
+
+	startdir="$(pwd)"
+
+	sudo -v || return 1
+
+	mkdir -p "$dl_dir"
+
+	cd "$dl_dir" || return 1
+
+	echo "➜ Downloading hide.me Linux client..."
+	wget -O "$archive" "$url" || {
+		cd "$startdir" || true
+		return 1
+	}
+
+	echo "➜ Extracting..."
+	rm -rf "$workdir"
+	mkdir -p "$workdir"
+
+	tar -xzf "$archive" -C "$workdir" || {
+		cd "$startdir" || true
+		return 1
+	}
+
+	cd "$workdir" || {
+		cd "$startdir" || true
+		return 1
+	}
+
+	echo "➜ Contents:"
+	ls -la
+
+	echo "➜ Running installer..."
+	sudo ./install.sh || {
+		cd "$startdir" || true
+		return 1
+	}
+
+	echo "➜ Disabling packaged hide.me services for manual mode..."
+	sudo systemctl disable --now 'hide.me@nl.service' 2>/dev/null || true
+	sudo systemctl disable --now 'hide.me@free-nl.service' 2>/dev/null || true
+	sudo systemctl disable --now 'hide.me@us.service' 2>/dev/null || true
+	sudo systemctl disable --now 'hide.me@free-us.service' 2>/dev/null || true
+
+	cd "$startdir" || true
+
+	echo "✓ hide.me installed."
+	echo "  Use: vup"
+	echo "  Use: vdown"
 }
