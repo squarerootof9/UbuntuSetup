@@ -665,6 +665,11 @@ install_kde_plasma_desktop() {
 	#add "always on top" (F) to window toolbar
 	kwriteconfig6 --file kwinrc --group org.kde.kdecoration2 --key ButtonsOnRight "FIAX"
 
+	#set "show media controls" to false in kscreenlockerrc
+	kwriteconfig6 --file kscreenlockerrc \
+		--group Greeter --group LnF --group General \
+		--key showMediaControls false
+
 	cat <<EOF >"$HOME/.xinputrc"
 # set by setup script
 run_im none
@@ -755,6 +760,7 @@ kde_settings() {
 	#kwriteconfig6 --file kscreenlockerrc --group Daemon --key Timeout 5  # minutes
 	kwriteconfig6 --file kscreenlockerrc --group Daemon --key Autolock false
 	kwriteconfig6 --file kscreenlockerrc --group Daemon --key Timeout 0 # minutes
+	kwriteconfig6 --file kscreenlockerrc --group Greeter --group LnF --group General --key showMediaControls false
 
 	# Power Management: AC profile configuration
 	kwriteconfig6 --file powerdevilrc --group "AC" --group "Display" --key UseProfileSpecificDisplayBrightness true
@@ -3828,6 +3834,435 @@ menu_dev() {
 	done
 
 }
+#LUKS
+LUKS_TARGET=""
+LUKS_LOOP=""
+LUKS_IMAGE=""
+
+luks_cleanup_image() {
+
+	if [[ -n "${LUKS_LOOP:-}" ]]; then
+		if sudo losetup "$LUKS_LOOP" >/dev/null 2>&1; then
+			if ! sudo losetup -d "$LUKS_LOOP"; then
+				echo "⚠️  Could not detach loop device $LUKS_LOOP"
+				return 1
+			fi
+		fi
+	fi
+
+	LUKS_LOOP=""
+	LUKS_IMAGE=""
+	return 0
+}
+
+luks_choose_from_list() {
+
+	local title="$1"
+	shift
+
+	local devices=("$@")
+	local choice dev details i
+
+	[[ ${#devices[@]} -gt 0 ]] || return 1
+
+	echo
+	msg_text "$title"
+
+	for i in "${!devices[@]}"; do
+		dev="${devices[$i]}"
+
+		details="$(
+			lsblk -dn -o SIZE,FSTYPE,LABEL "$dev" 2>/dev/null || true
+		)"
+
+		printf '%d) %-20s %s\n' \
+			"$((i + 1))" "$dev" "$details"
+	done
+
+	echo
+	read -rp "Select device [1-${#devices[@]}]: " choice
+
+	if [[ "$choice" =~ ^[0-9]+$ ]] &&
+		((choice >= 1 && choice <= ${#devices[@]})); then
+
+		LUKS_TARGET="${devices[$((choice - 1))]}"
+		return 0
+	fi
+
+	echo "Invalid selection."
+	return 1
+}
+
+luks_select_image() {
+
+	local image loopdev dev
+	local -a nodes=()
+	local -a luks_nodes=()
+
+	read -erp "Path to raw disk image: " image
+
+	# Expand ~/foo.img
+	image="${image/#\~/$HOME}"
+
+	if [[ ! -f "$image" ]]; then
+		echo "❌ Image not found: $image"
+		return 1
+	fi
+
+	# Don't attach the same image twice.
+	if sudo losetup -j "$image" | grep -q .; then
+		echo "❌ That image is already attached:"
+		sudo losetup -j "$image" || true
+		return 1
+	fi
+
+	if ! loopdev="$(
+		sudo losetup \
+			--find \
+			--show \
+			--partscan \
+			"$image"
+	)"; then
+		echo "❌ Could not attach image."
+		return 1
+	fi
+
+	LUKS_LOOP="$loopdev"
+	LUKS_IMAGE="$image"
+
+	sudo udevadm settle >/dev/null 2>&1 || true
+
+	# Check the whole image and any partitions within it.
+	mapfile -t nodes < <(
+		lsblk -rpn -o NAME "$loopdev"
+	)
+
+	for dev in "${nodes[@]}"; do
+		if sudo cryptsetup isLuks "$dev" >/dev/null 2>&1; then
+			luks_nodes+=("$dev")
+		fi
+	done
+
+	case ${#luks_nodes[@]} in
+
+	0)
+		echo "❌ No LUKS container found inside $image"
+		luks_cleanup_image || true
+		return 1
+		;;
+
+	1)
+		LUKS_TARGET="${luks_nodes[0]}"
+		;;
+
+	*)
+		if ! luks_choose_from_list \
+			"LUKS containers in image" \
+			"${luks_nodes[@]}"; then
+
+			luks_cleanup_image || true
+			return 1
+		fi
+		;;
+	esac
+
+	echo
+	echo "✅ Image attached: $LUKS_LOOP"
+	echo "✅ LUKS target:    $LUKS_TARGET"
+}
+
+luks_select_target() {
+
+	local choice dev details i
+	local -a devices=()
+
+	# Detach any image previously selected.
+	if ! luks_cleanup_image; then
+		return 1
+	fi
+
+	LUKS_TARGET=""
+
+	clear
+
+	echo "╭──────────────────────────────────────────╮"
+	echo -e "│          ${BOLD}${CYAN}LUKS Target Selection${RESET}           │"
+	echo "╰──────────────────────────────────────────╯"
+	echo
+
+	lsblk -f
+	echo
+
+	# Find every currently visible LUKS block device.
+	mapfile -t devices < <(
+		lsblk -rpn -o NAME,FSTYPE |
+			awk '$2 == "crypto_LUKS" {print $1}'
+	)
+
+	if [[ ${#devices[@]} -gt 0 ]]; then
+
+		msg_text "Detected LUKS Devices"
+
+		for i in "${!devices[@]}"; do
+
+			dev="${devices[$i]}"
+
+			details="$(
+				lsblk -dn -o SIZE,FSTYPE,LABEL \
+					"$dev" 2>/dev/null || true
+			)"
+
+			printf '%d) %-20s %s\n' \
+				"$((i + 1))" "$dev" "$details"
+		done
+
+		echo
+	fi
+
+	echo "i) Use raw disk image"
+	echo "m) Enter device manually"
+	echo "q) Cancel"
+	echo
+
+	read -rp "Select LUKS target: " choice
+
+	if [[ "$choice" =~ ^[0-9]+$ ]] &&
+		((choice >= 1 && choice <= ${#devices[@]})); then
+
+		LUKS_TARGET="${devices[$((choice - 1))]}"
+
+	elif [[ "$choice" == "i" || "$choice" == "I" ]]; then
+
+		luks_select_image || return 1
+
+	elif [[ "$choice" == "m" || "$choice" == "M" ]]; then
+
+		read -erp "Device path [/dev/...]: " dev
+
+		if [[ ! -b "$dev" ]]; then
+			echo "❌ Not a block device: $dev"
+			return 1
+		fi
+
+		if ! sudo cryptsetup isLuks "$dev" >/dev/null 2>&1; then
+			echo "❌ Not a LUKS container: $dev"
+			return 1
+		fi
+
+		LUKS_TARGET="$dev"
+
+	else
+		return 1
+	fi
+
+	if [[ -n "$LUKS_TARGET" ]]; then
+		echo
+		echo "✅ Selected: $LUKS_TARGET"
+	fi
+}
+
+luks_require_target() {
+
+	if [[ -z "${LUKS_TARGET:-}" ]]; then
+		echo "❌ No LUKS target selected."
+		return 1
+	fi
+
+	if [[ ! -b "$LUKS_TARGET" ]] ||
+		! sudo cryptsetup isLuks "$LUKS_TARGET" >/dev/null 2>&1; then
+
+		echo "❌ Selected target is no longer valid:"
+		echo "   $LUKS_TARGET"
+		return 1
+	fi
+
+	return 0
+}
+
+luks_show_keyslots() {
+
+	local dump
+
+	luks_require_target || return 1
+
+	if ! dump="$(sudo cryptsetup luksDump "$LUKS_TARGET")"; then
+		echo "❌ Unable to read LUKS header."
+		return 1
+	fi
+
+	# LUKS2:
+	#   Keyslots:
+	#     0: luks2
+	#
+	# Also recognizes old LUKS1:
+	#   Key Slot 0: ENABLED
+
+	printf '%s\n' "$dump" |
+		awk '
+			/^Keyslots:/ {
+				print
+				slots=1
+				next
+			}
+
+			/^Tokens:/ {
+				slots=0
+			}
+
+			slots && /^[[:space:]]+[0-9]+:/ {
+				print
+			}
+
+			/^Key Slot [0-9]+:/ {
+				print
+			}
+		'
+}
+
+menu_luks() {
+
+	sudo -v || return 1
+
+	local choice
+
+	if ! command -v cryptsetup >/dev/null 2>&1; then
+		echo "❌ cryptsetup is not installed."
+		msg_pause
+		return 1
+	fi
+
+	LUKS_TARGET=""
+	LUKS_LOOP=""
+	LUKS_IMAGE=""
+
+	# Select once when the menu opens.
+	luks_select_target || true
+
+	while true; do
+
+		clear
+
+		echo "╭──────────────────────────────────────────╮"
+		echo -e "│             ${BOLD}${CYAN}LUKS Key Menu${RESET}                │"
+		echo "╰──────────────────────────────────────────╯"
+
+		msg_text "Target: ${LUKS_TARGET:-<none>}"
+
+		if [[ -n "${LUKS_IMAGE:-}" ]]; then
+			echo "Image:  $LUKS_IMAGE"
+		fi
+
+		echo
+		echo "1) Select LUKS Target"
+		echo "2) Show Block Devices (lsblk -f)"
+		echo "3) Show Full LUKS Header"
+		echo "4) Show Keyslots"
+		echo "5) Change Passphrase"
+		echo "6) Add Passphrase / Keyslot"
+		echo "7) Test Passphrase"
+		echo "8) Remove Passphrase / Keyslot"
+		echo "9) 🔙 Back to Main Menu"
+		echo ""
+
+		read -rp "Please select an option [1-9]: " choice
+
+		case $choice in
+
+		1)
+			luks_select_target || true
+			;;
+
+		2)
+			lsblk -f
+			;;
+
+		3)
+			if luks_require_target; then
+				sudo cryptsetup luksDump "$LUKS_TARGET" ||
+					echo "❌ luksDump failed."
+			fi
+			;;
+
+		4)
+			luks_show_keyslots || true
+			;;
+
+		5)
+			if luks_require_target &&
+				msg_confirm \
+					"Change the LUKS passphrase on $LUKS_TARGET?"; then
+
+				if sudo cryptsetup luksChangeKey "$LUKS_TARGET"; then
+					msg_end "LUKS passphrase changed."
+				else
+					echo "❌ Passphrase change failed."
+				fi
+			fi
+			;;
+
+		6)
+			if luks_require_target; then
+
+				if sudo cryptsetup luksAddKey "$LUKS_TARGET"; then
+					msg_end "New LUKS keyslot added."
+				else
+					echo "❌ Adding LUKS key failed."
+				fi
+			fi
+			;;
+
+		7)
+			if luks_require_target; then
+
+				if sudo cryptsetup \
+					open \
+					--test-passphrase \
+					"$LUKS_TARGET"; then
+
+					msg_end "Passphrase accepted."
+				else
+					echo "❌ Passphrase rejected."
+				fi
+			fi
+			;;
+
+		8)
+			if luks_require_target; then
+
+				echo
+				luks_show_keyslots || true
+				echo
+
+				echo "⚠️  Test another working passphrase before removing one."
+
+				if msg_confirm \
+					"Remove a passphrase from $LUKS_TARGET?"; then
+
+					if sudo cryptsetup \
+						luksRemoveKey \
+						"$LUKS_TARGET"; then
+
+						msg_end "LUKS key removed."
+					else
+						echo "❌ Removing LUKS key failed."
+					fi
+				fi
+			fi
+			;;
+
+		9 | q)
+			luks_cleanup_image || true
+			menu_main
+			;;
+
+		*)
+			echo "Invalid option. Please try again."
+			;;
+		esac
+
+		msg_pause
+	done
+}
 # Main Menu
 menu_main() {
 
@@ -3955,7 +4390,7 @@ menu_main() {
 			install_graphics
 			;;
 		21)
-			sudo snap install freecad
+			sudo snap install freecad --candidate
 			;;
 		22)
 			install_appimages "https://github.com/SoftFever/OrcaSlicer/releases/download/v2.3.1/OrcaSlicer_Linux_AppImage_Ubuntu2404_V2.3.1.AppImage"
@@ -4036,6 +4471,17 @@ menu_main() {
 			;;
 		xtrash)
 			empty_trash
+			;;
+		install_grok)
+			curl -fsSL https://x.ai/cli/install.sh | bash
+			grok login --device-auth
+			;;
+		install_codex)
+			npm i -g @openai/codex
+			codex
+			;;
+		luks)
+			menu_luks
 			;;
 		*)
 			echo "Invalid option. Please try again."
