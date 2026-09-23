@@ -367,6 +367,37 @@ minfo() {
 	ffprobe -hide_banner -i "$1"
 }
 
+exifstrip() {
+	[[ $# -ge 1 ]] || {
+		echo "usage: mstrip <input>"
+		return 2
+	}
+	local in="$1"
+
+	exiftool -all= "$in"
+
+}
+
+vwebp() {
+	[[ $# -ge 1 ]] || {
+		echo "usage: vwebp <input> [output.webp]"
+		return 2
+	}
+
+	local in="$1"
+	local out="${2:-${in%.*}.webp}"
+
+	ffmpeg -hide_banner -i "$in" \
+		-c:v libvpx-vp9 \
+		-c:a libopus \
+		"$out"
+
+	#ffmpeg -hide_banner -i "$in" \
+	#-vf "fps=30000/1001,format=rgb24" \
+	#-c:v libwebp -lossless 0 -compression_level 6 -q:v 80 \
+	#"$out"
+}
+
 vmp4() {
 	[[ $# -ge 1 ]] || {
 		echo "usage: vmp4 <input> [output.mp4]"
@@ -707,8 +738,23 @@ mknpmnode() {
 
 }
 
+###
+## hide.me VPN helpers
+###
+
 vup() {
-	local log="/tmp/hideme-free-nl.log"
+
+	#free-fi
+	#free-fr
+	#free-de
+	#free-nl
+	#free-ch
+	#free-uk
+	#free-us
+
+	local loc="${1:-free-nl}"
+
+	local log="/tmp/hideme-${loc}.log"
 
 	# Ask for sudo password in the foreground, where it can actually prompt.
 	sudo -v || return 1
@@ -723,15 +769,15 @@ vup() {
 		cd /opt/hide.me || exit 1
 
 		sudo -n setsid ./hide.me \
-			-d 1.1.1.1:53,8.8.8.8:53 \
-			connect free-nl \
+			--dns 1.1.1.1:53,8.8.8.8:53 \
+			connect "$loc" \
 			>"$log" 2>&1 </dev/null &
 	)
 
 	sleep 3
 
 	if ip link show vpn >/dev/null 2>&1; then
-		echo "✓ VPN up"
+		echo "✓ VPN up ($loc)"
 		sudo wg show 2>/dev/null || true
 	else
 		echo "✗ VPN did not come up yet. Log:"
@@ -764,6 +810,90 @@ vdown() {
 	sudo ip -6 route flush table 55555 2>/dev/null || true
 
 	echo "✓ VPN down / routes cleaned"
+}
+
+vpnfw_add() {
+	echo "➜ Protecting VPN interface..."
+
+	sudo iptables -C INPUT -i vpn -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i vpn -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+	sudo iptables -C INPUT -i vpn -j DROP 2>/dev/null ||
+		sudo iptables -A INPUT -i vpn -j DROP
+
+	sudo ip6tables -C INPUT -i vpn -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i vpn -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+	sudo ip6tables -C INPUT -i vpn -j DROP 2>/dev/null ||
+		sudo ip6tables -A INPUT -i vpn -j DROP
+
+	echo "✓ VPN interface protected."
+}
+
+vpnfw_clear() {
+	echo "➜ Removing VPN firewall rules..."
+
+	sudo iptables -D INPUT -i vpn -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+	sudo iptables -D INPUT -i vpn -j DROP 2>/dev/null || true
+
+	sudo ip6tables -D INPUT -i vpn -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT 2>/dev/null || true
+	sudo ip6tables -D INPUT -i vpn -j DROP 2>/dev/null || true
+
+	echo "✓ VPN firewall rules removed."
+}
+
+vpnfw_status() {
+	sudo iptables -S | grep -w vpn
+	sudo ip6tables -S | grep -w vpn
+}
+
+vpnreset() {
+	local startdir
+	local token="/opt/hide.me/accessToken.txt"
+
+	startdir="$(pwd)"
+
+	sudo -v || return 1
+
+	cd /opt/hide.me || {
+		echo "✗ /opt/hide.me not found."
+		return 1
+	}
+
+	sudo rm -f "$token"
+
+	sudo ./hide.me \
+		--dns 1.1.1.1:53,8.8.8.8:53 \
+		token free.hideservers.net || {
+		echo "✗ Failed to refresh hide.me token."
+		cd "$startdir" || true
+		return 1
+	}
+
+	if [[ ! -f "$token" ]]; then
+		echo "✗ Token file was not created:"
+		echo "  $token"
+		cd "$startdir" || true
+		return 1
+	fi
+
+	echo "➜ Setting up permissions..."
+
+	sudo chown root:root "$token" || {
+		echo "✗ Failed to set token ownership."
+		cd "$startdir" || true
+		return 1
+	}
+
+	sudo chmod 600 "$token" || {
+		echo "✗ Failed to set token permissions."
+		cd "$startdir" || true
+		return 1
+	}
+
+	cd "$startdir" || true
+
+	echo "✓ hide.me accessToken.txt setup complete."
 }
 
 vpnsetup() {
@@ -810,6 +940,10 @@ vpnsetup() {
 		return 1
 	}
 
+	echo "➜ Setting up permissions..."
+	sudo chown root:root /opt/hide.me/accessToken.txt
+	sudo chmod 600 /opt/hide.me/accessToken.txt
+
 	echo "➜ Disabling packaged hide.me services for manual mode..."
 	sudo systemctl disable --now 'hide.me@nl.service' 2>/dev/null || true
 	sudo systemctl disable --now 'hide.me@free-nl.service' 2>/dev/null || true
@@ -822,3 +956,12 @@ vpnsetup() {
 	echo "  Use: vup"
 	echo "  Use: vdown"
 }
+
+#lsblk -f
+#sudo cryptsetup luksDump /dev/nvme0n1p3
+#sudo cryptsetup luksDump /dev/nvme0n1p3 | grep -A2 '^Keyslots:'
+#sudo cryptsetup luksDump /dev/nvme0n1p3 | grep -E '^[[:space:]]+[0-9]+:'
+#sudo cryptsetup luksChangeKey /dev/nvme0n1p3
+#sudo cryptsetup luksAddKey /dev/nvme0n1p3
+#sudo cryptsetup open --test-passphrase /dev/nvme0n1p3
+#sudo cryptsetup luksRemoveKey /dev/nvme0n1p3
