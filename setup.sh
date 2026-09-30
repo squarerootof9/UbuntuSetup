@@ -1002,6 +1002,9 @@ install_apt_apps() {
 		#Command-line PulseAudio utilities (PipeWire implements PulseAudio compatibility)
 		pulseaudio-utils
 		libpulsedsp #DSP plugin library for PulseAudio. (🤔?)
+
+		libheif-plugin-ffmpegdec #HEIF/HEIC
+
 	)
 
 	#########################################################
