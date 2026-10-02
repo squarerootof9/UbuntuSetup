@@ -936,7 +936,7 @@ empty_trash() {
 	msg_end "Trash emptied."
 }
 
-install_apt_apps() {
+install_shared_apt_packages() {
 
 	local options="${1:-}"
 
@@ -1005,6 +1005,12 @@ install_apt_apps() {
 
 		libheif-plugin-ffmpegdec #HEIF/HEIC
 
+		#ubuntu-restricted-extras
+
+		#gnome extras
+		gnome-tweaks
+		gnome-shell-extension-manager
+		#dconf-editor <- adds menu item in kde also
 	)
 
 	#########################################################
@@ -2170,6 +2176,17 @@ iptables_secure() {
 		;;
 	esac
 
+		# Ask user whether to expose
+	read -rp "Enable access to this machine with HTTP (Hypertext Transfer Protocol) on interface $IFACE? [y/N]: " reply_http
+	case "$reply_http" in
+	[yY] | [yY][eE][sS])
+		iptables_http
+		;;
+	*)
+		echo "❌ http exposure canceled."
+		;;
+	esac
+
 	iptables_save
 
 }
@@ -2329,6 +2346,26 @@ iptables_rdp() {
 		sudo ip6tables -A INPUT -i "$IFACE" -p udp --dport 3389 -j ACCEPT
 
 	echo "✅ RPD port exposed on "$IFACE"."
+
+}
+
+iptables_http() {
+
+	IFACE=$(ip route show default 2>/dev/null | awk '{print $5; exit}')
+	[[ -n "$IFACE" ]] || {
+		echo "No default interface found"
+		return 1
+	}
+
+	echo "🔓 Opening port 80 tcp on interface $IFACE..."
+
+	sudo iptables -C INPUT -i "$IFACE" -p tcp --dport 80 -j ACCEPT 2>/dev/null ||
+		sudo iptables -A INPUT -i "$IFACE" -p tcp --dport 80 -j ACCEPT
+
+	sudo ip6tables -C INPUT -i "$IFACE" -p tcp --dport 80 -j ACCEPT 2>/dev/null ||
+		sudo ip6tables -A INPUT -i "$IFACE" -p tcp --dport 80 -j ACCEPT
+
+	echo "✅ HTTP port exposed on "$IFACE"."
 
 }
 
@@ -4337,7 +4374,7 @@ menu_main() {
 
 		case $choice in
 		1)
-			install_apt_apps
+			install_shared_apt_packages
 			;;
 		2)
 			install_audio_studio
