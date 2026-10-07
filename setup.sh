@@ -1526,26 +1526,20 @@ install_discord() {
 	local final_url=""
 	local archive=""
 	local version=""
-	local app="discord"
 	local cache_archive=""
 	local install_dir=""
 	local extracted_dir=""
 	local launcher=""
-	local sandbox_path=""
 	local icon_src=""
-	local icon_dir="$HOME/.local/share/icons/hicolor/512x512/apps"
+
+	local icon_dir="$HOME/.local/share/icons/hicolor/256x256/apps"
 	local icon_dst="$icon_dir/discord.png"
 
-	echo "Installing Discord (latest Linux tar.gz)..."
-
-	# ---- Deps ----
-	#sudo apt-get update -y >/dev/null
-	#sudo apt-get install -y curl ca-certificates coreutils findutils tar >/dev/null
+	echo "Installing Discord (latest Linux bootstrap)..."
 
 	mkdir -p "$base_dir" "$cache_dir"
 
-	# ---- Resolve current release URL/filename ----
-	# We ask curl what URL it ended up at after redirects.
+	# ---- Resolve current release ----
 	final_url="$(curl -fsSL -o /dev/null -w '%{url_effective}' "$api_url")"
 
 	if [[ -z "$final_url" || "$final_url" == "$api_url" ]]; then
@@ -1554,14 +1548,18 @@ install_discord() {
 	fi
 
 	archive="$(basename "${final_url%%\?*}")"
-	if [[ -z "$archive" || "$archive" != *.tar.gz ]]; then
-		echo "ERROR: Resolved filename does not look like a Discord tar.gz: $archive"
+
+	if [[ "$archive" != discord-*.tar.gz ]]; then
+		echo "ERROR: Unexpected Discord archive: $archive"
 		return 1
 	fi
 
-	version="$(sed -nE 's/^discord-([0-9][0-9.]+)\.tar\.gz$/\1/p' <<<"$archive")"
+	version="$(sed -nE \
+		's/^discord-([0-9][0-9.]+)\.tar\.gz$/\1/p' \
+		<<<"$archive")"
+
 	if [[ -z "$version" ]]; then
-		echo "ERROR: Could not parse Discord version from filename: $archive"
+		echo "ERROR: Could not determine Discord version."
 		return 1
 	fi
 
@@ -1571,7 +1569,7 @@ install_discord() {
 	echo "Resolved Discord version: $version"
 	echo "Resolved archive: $archive"
 
-	# ---- Download (if missing) ----
+	# ---- Download ----
 	if [[ ! -f "$cache_archive" ]]; then
 		echo "Downloading: $final_url"
 		curl -L --fail -o "$cache_archive" "$final_url"
@@ -1579,76 +1577,107 @@ install_discord() {
 		echo "Using cached: $cache_archive"
 	fi
 
-	# ---- Extract (idempotent per version) ----
+	# ---- Extract ----
 	if [[ -d "$install_dir" ]]; then
 		echo "Already extracted: $install_dir"
 	else
 		echo "Extracting Discord..."
+
 		rm -rf "$base_dir/_extract-discord"
 		mkdir -p "$base_dir/_extract-discord"
 
-		tar -xzf "$cache_archive" -C "$base_dir/_extract-discord"
+		tar -xzf "$cache_archive" \
+			-C "$base_dir/_extract-discord"
 
-		extracted_dir="$(find "$base_dir/_extract-discord" -mindepth 1 -maxdepth 1 -type d -name 'Discord' -print -quit || true)"
-		if [[ -z "$extracted_dir" ]]; then
-			echo "ERROR: Extracted Discord directory not found."
+		extracted_dir="$base_dir/_extract-discord/Discord"
+
+		if [[ ! -d "$extracted_dir" ]]; then
+			echo "ERROR: Discord directory not found in archive."
 			rm -rf "$base_dir/_extract-discord"
 			return 1
 		fi
 
-		mv -f "$extracted_dir" "$install_dir"
+		mv "$extracted_dir" "$install_dir"
 		rm -rf "$base_dir/_extract-discord"
 	fi
 
-	# ---- Fix chrome-sandbox (Electron) ----
-	sandbox_path="$(find "$install_dir" -type f -name 'chrome-sandbox' -print -quit || true)"
-	if [[ -n "$sandbox_path" ]]; then
-		echo "Fixing chrome-sandbox: $sandbox_path"
-		sudo chown root:root "$sandbox_path"
-		sudo chmod 4755 "$sandbox_path"
-	else
-		echo "Note: chrome-sandbox not found."
-	fi
+	# ---- New Discord bootstrap launcher ----
+	launcher="$install_dir/discord"
 
-	# ---- Install icon ----
-	icon_src="$(find "$install_dir" \
-		-type f \( -iname 'discord.png' -o -path '*/share/icons/*/apps/discord.png' -o -path '*/share/pixmaps/*.png' \) \
-		-print 2>/dev/null | head -n 1 || true)"
-
-	if [[ -n "$icon_src" ]]; then
-		mkdir -p "$icon_dir"
-		cp -f "$icon_src" "$icon_dst"
-		echo "Icon installed: $icon_dst"
-	else
-		echo "Note: Could not auto-find a Discord icon inside the tarball."
-	fi
-
-	# ---- Create launcher in /usr/local/bin ----
-	launcher="$install_dir/Discord"
 	if [[ ! -x "$launcher" ]]; then
-		echo "ERROR: Discord launcher not found/executable at: $launcher"
+		echo "ERROR: Discord launcher not found/executable:"
+		echo "       $launcher"
 		return 1
 	fi
 
+	if [[ ! -x "$install_dir/updater_bootstrap" ]]; then
+		echo "ERROR: Discord updater_bootstrap not found/executable:"
+		echo "       $install_dir/updater_bootstrap"
+		return 1
+	fi
+
+	# ---- Icon ----
+	icon_src="$install_dir/discord.png"
+
+	if [[ -f "$icon_src" ]]; then
+		mkdir -p "$icon_dir"
+		cp -f "$icon_src" "$icon_dst"
+		echo "Icon installed: $icon_dst"
+	fi
+
+	# ---- Stable launcher ----
 	sudo ln -sf "$launcher" /usr/local/bin/discord
+	sudo ln -sf "$install_dir/updater_bootstrap" /usr/local/bin/updater_bootstrap
+
+	# ---- Sandbox fix ----
+	fix_discord_sandbox
 
 	# ---- Desktop entry ----
 	mkdir -p "$HOME/.local/share/applications"
+
 	cat >"$HOME/.local/share/applications/discord.desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Discord
-Exec=/usr/local/bin/discord --password-store=basic --enable-features=WebRTCPipeWireCapturer %U
+Exec=/usr/local/bin/discord %U
 Icon=discord
 Categories=Network;InstantMessaging;Chat;
 Terminal=false
 StartupNotify=true
+MimeType=x-scheme-handler/discord;
 EOF
 
 	command -v update-desktop-database >/dev/null 2>&1 &&
-		update-desktop-database "$HOME/.local/share/applications" >/dev/null 2>&1 || true
+		update-desktop-database \
+			"$HOME/.local/share/applications" \
+			>/dev/null 2>&1 || true
 
-	echo "✅ Installed Discord $version. Run: discord"
+	echo ""
+	echo "✅ Discord bootstrap $version installed."
+	echo "Run: discord"
+}
+
+fix_discord_sandbox() {
+
+	local sandbox=""
+
+	sandbox="$(find "$HOME/.config/discord" \
+		-maxdepth 2 \
+		-type f \
+		-path '*/app-*/chrome-sandbox' \
+		-print 2>/dev/null |
+		sort -V |
+		tail -n 1)"
+
+	if [[ -n "$sandbox" ]]; then
+		echo "Fixing Discord chrome-sandbox:"
+		echo "  $sandbox"
+
+		sudo chown root:root "$sandbox"
+		sudo chmod 4755 "$sandbox"
+	else
+		echo "Discord chrome-sandbox not found yet."
+	fi
 }
 
 # Function to install .deb packages
@@ -2176,7 +2205,7 @@ iptables_secure() {
 		;;
 	esac
 
-		# Ask user whether to expose
+	# Ask user whether to expose
 	read -rp "Enable access to this machine with HTTP (Hypertext Transfer Protocol) on interface $IFACE? [y/N]: " reply_http
 	case "$reply_http" in
 	[yY] | [yY][eE][sS])
@@ -4524,6 +4553,9 @@ menu_main() {
 		install_codex)
 			npm i -g @openai/codex
 			codex
+			;;
+		install_openclaw)
+			curl -fsSL https://openclaw.ai/install.sh | bash
 			;;
 		luks)
 			menu_luks
