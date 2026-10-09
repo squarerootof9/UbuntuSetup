@@ -1861,7 +1861,7 @@ setup_ssh() {
 	# Manicure sshd_config for banner
 	printf 'DebianBanner no\n' | sudo tee /etc/ssh/sshd_config.d/10-no-distro-banner.conf
 	# Test and reload sshd service
-	sudo sshd -t && sudo systemctl reload ssh
+	#sudo sshd -t && sudo systemctl reload ssh
 
 	# Enable and start SSH
 	sudo systemctl enable ssh
