@@ -4520,6 +4520,32 @@ menu_main() {
 		ollama)
 			install_ollama
 			;;
+		piper-tts)
+			#TTS
+
+			(
+				#set -eu
+
+				sudo apt-get install -y curl ca-certificates
+				piper_tmp="$(mktemp -d)"
+				trap 'rm -rf "$piper_tmp"' EXIT
+
+				curl -fL \
+					https://github.com/rhasspy/piper/releases/download/2023.11.14-2/piper_linux_x86_64.tar.gz \
+					-o "$piper_tmp/piper.tar.gz"
+
+				tar -xzf "$piper_tmp/piper.tar.gz" -C "$piper_tmp"
+				sudo mkdir -p /opt/piper
+				sudo cp -a "$piper_tmp/piper/." /opt/piper/
+				sudo ln -sfn /opt/piper/piper /usr/local/bin/piper
+
+				sudo wget -P /opt/piper/ \
+					https://huggingface.co/csukuangfj/vits-piper-en_GB-southern_english_female-low/resolve/main/en_GB-southern_english_female-low.onnx.json \
+					https://huggingface.co/csukuangfj/vits-piper-en_GB-southern_english_female-low/resolve/main/en_GB-southern_english_female-low.onnx
+
+				#/usr/local/bin/piper --help
+			)
+			;;
 		ledger)
 			install_ledger_live
 			;;
