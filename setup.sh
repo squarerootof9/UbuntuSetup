@@ -976,7 +976,7 @@ install_shared_apt_packages() {
 
 	### 🔐 Security & Auth
 	security_tools=(
-		opensc pcscd pcsc-tools fido2-tools yubikey-manager yubico-piv-tool libpam-pkcs11 xca wireguard
+		opensc pcscd pcsc-tools fido2-tools yubikey-manager yubico-piv-tool libpam-pkcs11 xca wireguard libsecret-tools
 	)
 
 	#sudo apt install pcsc-tools pcscd libccid
@@ -1099,6 +1099,7 @@ install_shared_apt_packages() {
 		#rpm
 		#wimtools
 
+		golang-go
 	)
 
 	all_packages=(
