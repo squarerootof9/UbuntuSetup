@@ -19,9 +19,20 @@ alias count='find . -type f | wc -l'
 
 alias c='clear'                           # if you want even shorter than cl
 alias q='exit'                            # if you want even shorter than xx
-alias m='btop'                            # m for 'monitor'
+#alias m='btop'                            # m for 'monitor'
 alias s='cd ~/Downloads/UbuntuSetup-main' # <- quick path to there
 alias x=extract
+
+m() {
+	# m for monitor, but btop is more modern than htop
+	if command -v btop >/dev/null 2>&1; then
+		btop "$@"
+	elif command -v htop >/dev/null 2>&1; then
+		htop "$@"
+	else
+		top "$@"
+	fi
+}
 
 extract() {
 	[[ $# -ge 1 ]] || {
@@ -84,6 +95,15 @@ extract() {
 	done
 }
 
+# ---- log monitoring ----
+logmonitor() {
+
+	local service="${1:-openclaw-gateway.service}"
+
+	journalctl --user -u "${service}" -f |
+		rg --line-buffered -i 'agentmail|mailman|error|failed'
+}
+
 # ---- git quick commands ----
 
 # Safe “wrapper” so functions can pass args cleanly
@@ -102,7 +122,6 @@ gd() { git diff "$@"; }           # working tree diff
 gds() { git diff --staged "$@"; } # staged diff
 gl() { git log --oneline --decorate --graph --all "$@"; }
 gb() { git branch "$@"; }
-go() { git checkout "$@"; } # or use 'git switch' below
 gpl() { git pull "$@"; }
 gp() {
 	if [[ $# -gt 0 ]]; then
@@ -369,7 +388,7 @@ minfo() {
 
 exifstrip() {
 	[[ $# -ge 1 ]] || {
-		echo "usage: mstrip <input>"
+		echo "usage: exifstrip <input>"
 		return 2
 	}
 	local in="$1"
@@ -768,8 +787,14 @@ vup() {
 	(
 		cd /opt/hide.me || exit 1
 
+		# single network split-tunnel example:
+		#--split-tunnel 192.168.1.0/24 \
+		# multi-network split-tunnel example:
+		#--split-tunnel 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+
 		sudo -n setsid ./hide.me \
 			--dns 1.1.1.1:53,8.8.8.8:53 \
+			--split-tunnel 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 \
 			connect "$loc" \
 			>"$log" 2>&1 </dev/null &
 	)
@@ -784,6 +809,10 @@ vup() {
 		tail -n 40 "$log"
 		return 1
 	fi
+
+	#ip route get 1.1.1.1
+	#ip route get 192.168.9.10
+
 }
 
 vdown() {
@@ -810,6 +839,67 @@ vdown() {
 	sudo ip -6 route flush table 55555 2>/dev/null || true
 
 	echo "✓ VPN down / routes cleaned"
+}
+
+vpnlistfree() {
+	vpnlist "free"
+}
+
+vpnlist() {
+	sudo -v || return 1
+
+	local loc="${1:-}"
+
+	(
+		cd /opt/hide.me || exit 1
+		export GREP_COLORS='ms=01;34'
+
+		sudo -n ./hide.me list 2>&1 |
+			grep --color=always -Ei -- "$loc"
+	)
+}
+
+vstatus() {
+	echo "=== hide.me VPN Status ==="
+	echo
+
+	echo "➜ Interface:"
+	if ip link show vpn >/dev/null 2>&1; then
+		echo "✓ VPN interface is up"
+		ip -brief link show vpn
+	else
+		echo "✗ VPN interface is not present"
+		return 0
+	fi
+
+	echo
+	echo "➜ VPN addresses:"
+	ip -brief addr show dev vpn
+
+	echo
+	echo "➜ WireGuard status:"
+	sudo wg show vpn 2>/dev/null || echo "No WireGuard status available"
+
+	echo
+	echo "➜ IPv4 policy rules:"
+	ip rule show | grep -E '55555|vpn' || echo "No VPN IPv4 policy rules found"
+
+	echo
+	echo "➜ IPv6 policy rules:"
+	ip -6 rule show | grep -E '55555|vpn' || echo "No VPN IPv6 policy rules found"
+
+	echo
+	echo "➜ IPv4 VPN routing table 55555:"
+	ip route show table 55555 2>/dev/null ||
+		echo "No IPv4 routes in table 55555"
+
+	echo
+	echo "➜ IPv6 VPN routing table 55555:"
+	ip -6 route show table 55555 2>/dev/null ||
+		echo "No IPv6 routes in table 55555"
+
+	echo
+	echo "=== End VPN Status ==="
 }
 
 vpnfw_add() {
