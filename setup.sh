@@ -183,6 +183,7 @@ install_development() {
 	# VCS / network utilities
 	PKGS_VCS_NET=(
 		git
+		gh
 		subversion
 		curl
 	)
@@ -995,6 +996,7 @@ install_shared_apt_packages() {
 		#smplayer #qt5 🤔
 
 		ffmpeg
+		v4l-utils
 		imagemagick
 		yt-dlp
 		dvd+rw-tools
@@ -2404,6 +2406,8 @@ iptables_http() {
 #######
 
 install_cloudflare_dns() {
+
+	#sudo systemctl disable --now dnscrypt-proxy-resolvconf.service
 
 	echo
 	sudo apt install --no-install-recommends dnscrypt-proxy
