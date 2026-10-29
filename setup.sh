@@ -4510,6 +4510,58 @@ menu_main() {
 			# 🕵🏻‍♂️ secret qt check
 			qt5check
 			;;
+		biglybt)
+			sudo apt install biglybt
+			mkdir -p ~/.biglybt/custom
+
+			cat >~/.biglybt/custom/mysettings.config <<'EOF'
+
+# VPN binding
+Bind\ IP=string:vpn
+Enforce\ Bind\ IP=bool:true
+Enforce\ Bind\ IP\ Pause=bool:true
+
+# IPv6 and UDP preferences
+#IPV6\ Prefer\ Addresses=bool:true
+peercontrol.prefer.udp=bool:true
+peercontrol.prefer.ipv6=bool:true
+
+# Require encrypted peer connections
+network.transport.encrypted.require=bool:true
+
+# Allow fallback to unencrypted connections
+network.transport.encrypted.fallback.incoming=bool:true
+network.transport.encrypted.fallback.outgoing=bool:true
+
+# Enable I2P and Tor by default for network selection
+Network\ Selection\ Default.I2P=bool:true
+Network\ Selection\ Default.Tor=bool:true
+
+DNS\ Alt\ Servers=string:1.1.1.1
+
+# Advanced interface
+User\ Mode=long:2
+
+Plugin.azbuddy.azbuddy.dchat.decentralized.enabled=bool:false
+
+
+EOF
+
+			#python3 -m venv ~/bt-tools
+			#~/bt-tools/bin/pip install bencodepy
+
+			#~/bt-tools/bin/python - <<'PY'
+			#import bencodepy
+			#from pathlib import Path
+
+			#path = Path.home() / ".biglybt/biglybt.config"
+			#config = bencodepy.decode_from_file(str(path))
+
+			#for key, value in sorted(config.items()):
+			#print(f"{key.decode(errors='replace')} = {value!r}")
+			#PY
+
+			;;
 		libreoffice)
 			sudo apt install libreoffice
 			;;
