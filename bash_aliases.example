@@ -789,12 +789,14 @@ vup() {
 
 		# single network split-tunnel example:
 		#--split-tunnel 192.168.1.0/24 \
-		# multi-network split-tunnel example:
+		# multi-network split-tunnel example :
 		#--split-tunnel 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+		# 10.0.0.0/8 breaks hide.me vpn port forwarding
+		# add --pf for port forwarding 
 
 		sudo -n setsid ./hide.me \
 			--dns 1.1.1.1:53,8.8.8.8:53 \
-			--split-tunnel 10.0.0.0/8,172.16.0.0/12,192.168.0.0/16 \
+			--split-tunnel 172.16.0.0/12,192.168.0.0/16 \
 			connect "$loc" \
 			>"$log" 2>&1 </dev/null &
 	)
@@ -989,8 +991,8 @@ vpnreset() {
 vpnsetup() {
 	local startdir
 	local dl_dir="$HOME/Downloads"
-	local archive="hide.me-linux-amd64.tar.gz"
-	local url="https://hide.me/download/linux-amd64"
+	local archive="hide.me-linux-amd64-0.9.14.tar.gz"
+	local url="https://github.com/eventure/hide.client.linux/releases/download/v0.9.14/hide.me-linux-amd64-0.9.14.tar.gz"
 	local workdir="$dl_dir/hide.me-linux"
 
 	startdir="$(pwd)"
@@ -1006,6 +1008,8 @@ vpnsetup() {
 		cd "$startdir" || true
 		return 1
 	}
+
+	echo "3e9d6842a95a2c91c6e91bdf86389cd74390dda491f206b5b07c402254a56d8f  hide.me-linux-amd64-0.9.14.tar.gz" | sha256sum -c -
 
 	echo "➜ Extracting..."
 	rm -rf "$workdir"
