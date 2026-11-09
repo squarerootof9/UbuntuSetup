@@ -956,6 +956,7 @@ install_shared_apt_packages() {
 		sleuthkit #autopsy  mac-robber
 		gtkhash
 		libfuse2
+		inxi
 	)
 
 	### 🗜️ Compression Tools
