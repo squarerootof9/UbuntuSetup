@@ -1002,6 +1002,10 @@ install_shared_apt_packages() {
 		yt-dlp
 		dvd+rw-tools
 
+		#Audio/Video Codecs
+		vorbis-tools
+		opustags
+
 		#Command-line PulseAudio utilities (PipeWire implements PulseAudio compatibility)
 		pulseaudio-utils
 		libpulsedsp #DSP plugin library for PulseAudio. (🤔?)
